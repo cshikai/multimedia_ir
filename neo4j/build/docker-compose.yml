@@ -1,0 +1,22 @@
+version: '3.4'
+ 
+services:
+ neo4j:
+   # runtime: nvidia
+   build: ../
+   stdin_open: true
+   tty: true
+   environment:
+    - NEO4JLABS_PLUGINS=${NEO4JLABS_PLUGINS}
+    - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD}
+   volumes:
+     - ../src:/src
+     - ../data:/data
+     - ../logs:/logs
+     - ../import:/var/lib/neo4j/import
+   ports:
+     - 7687:7687
+     - 7474:7474
+   ulimits:
+     memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+   shm_size: 32gb # set upper limit for how much shared memory container can use

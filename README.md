@@ -1,1 +1,2 @@
-# multimedia_ir
+# Multimedia Information Retrival
+

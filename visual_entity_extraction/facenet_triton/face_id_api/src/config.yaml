@@ -1,0 +1,15 @@
+EMB:
+  emb_path: '../data/pt_emb'
+
+MTCNN:
+  URL: 'http://mtcnn:5000'
+
+triton:
+  URL: 'triton:8000'
+  model_name: 'facenet'
+
+ELASTICSEARCH:
+  URL: 'http://es-container:9200'
+  INDEX_NAME: 'facenet'
+  ELASTIC_USERNAME: elastic
+  ELASTIC_PASSWORD: password

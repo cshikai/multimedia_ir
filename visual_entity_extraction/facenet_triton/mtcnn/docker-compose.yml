@@ -1,0 +1,11 @@
+version: '2.3'
+services:
+ mtcnn:
+  build: .
+  # image: "mtcnn:1.0"
+  runtime: nvidia
+  environment:
+   - NVIDIA_VISIBLE_DEVICES=all
+  ports:
+    - 5000:5000
+  command: python server.py

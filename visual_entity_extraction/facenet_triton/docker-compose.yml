@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  mtcnn: 
+    image: mtcnn
+    build: ./mtcnn 
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+    - NVIDIA_VISIBLE_DEVICES=all
+    ports:
+      - 5000:5000
+    command: python server.py
+    networks:
+        - backend    
+
+  triton: 
+    image: triton
+    build: ./triton 
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./triton/models:/models
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 16gb # set upper limit for how much shared memory container can use
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    ports:
+      - 8000:8000
+      - 8001:8001
+      - 8002:8002
+    command: tritonserver --model-repository=/models
+    # restart: always
+    networks:
+        - backend    
+
+  face_id:
+    image: face_id
+    build: ./face_id_api
+    ports: #to the host
+        - 8004:8000     #host:container
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 4gb
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - mtcnn
+      - triton
+      - elasticsearch
+    volumes:
+      - ./data:/data
+    command: uvicorn main:api --host 0.0.0.0
+    # restart: always
+    networks:
+        - backend    
+
+  elasticsearch:
+      image: docker.elastic.co/elasticsearch/elasticsearch:8.3.2
+      container_name: es-container
+      user: elasticsearch
+      environment:
+        - ELASTIC_USERNAME=elastic
+        - ELASTIC_PASSWORD=password
+        - xpack.security.enabled=false
+        - xpack.security.enrollment.enabled=false
+        - discovery.type=single-node
+      ports:
+        - 9200:9200
+      ulimits:
+        memlock:
+          soft: -1
+          hard: -1
+      restart: on-failure:5      
+      networks:
+          - backend
+        
+  kibana:
+     container_name: kb-container
+     image: docker.elastic.co/kibana/kibana:8.3.2
+     environment:
+       - ELASTICSEARCH_HOSTS=http://es-container:9200
+     depends_on:
+       - elasticsearch
+     ports:
+      - 5601:5601
+     networks:
+       - backend
+      
+networks:  
+  backend: 
+    driver: bridge

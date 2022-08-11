@@ -97,6 +97,13 @@ sysctl -w vm.max_map_count=262144
 docker network create -d bridge multimodal
 docker-compose -f docker-compose.elastic.yml up -d
 ```
+The elasticsearch service should be running on your localhost:9200 and you can check your elasticsearch indexes and perform stack management in Kibana running on localhost:5601
+
+Next, run the text_entity_extraction/BLINK_api/src/wikipedia_to_elastic.py script to populate the Elasticsearch 'wikipedia' index
+```
+cd text_entity_extraction
+python3 BLINK_api/src/wikipedia_to_elastic.py
+```
 
 ## Docker Services Setup
 

@@ -105,7 +105,7 @@ cd text_entity_extraction
 python3 BLINK_api/src/wikipedia_to_elastic.py
 ```
 
-** Note: do ensure that you are running the script in an environment that has the Haystack dependencies installed 
+** Note: do ensure that you are running the script in an environment that has the Haystack dependencies installed, otherwise run "pip install git+https://github.com/deepset-ai/haystack.git#egg=farm-haystack[colab]"
 
 ## Docker Services Setup
 

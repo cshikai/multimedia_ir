@@ -65,7 +65,14 @@ To use the model checkpoints trained on the DWIE dataset, go to the Google Drive
 cd text_entity_extraction/multimodal-jerex
 mkdir -p data/models/dwie
 ```
-and add all the downloaded contents into the folder
+and add all the downloaded contents into the folder, and change the files paths under the 'model' configs in 'text_entity_extraction/multimodal-jerex/configs/docred_joint/test.yaml' to
+the files in the data/models/dwie folder
+
+* check that the requirements.txt file is in the multimodal-jerex folder as well
+
+### BLINK Service
+
+
 
 ## Docker Services Setup
 

@@ -105,6 +105,8 @@ cd text_entity_extraction
 python3 BLINK_api/src/wikipedia_to_elastic.py
 ```
 
+** Note: do ensure that you are running the script in an environment that has the Haystack dependencies installed 
+
 ## Docker Services Setup
 
 To run all services together, run:

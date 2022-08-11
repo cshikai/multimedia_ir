@@ -106,6 +106,12 @@ cd text_entity_extraction
 sudo bash text_entity_extraction/run_docker_compose.sh
 ```
 
+To shut down all Docker services, run:
+```
+cd text_entity_extraction
+sudo bash text_entity_extraction/docker_compose_down.sh
+```
+
 ## BLINK_es
 
 # Notes

@@ -6,27 +6,47 @@ The text entity linking pipeline consists of 3 services to perform the entity re
 the wikipedia knowledge base and index to store 'articles' data.
 
 For the backend service, we will be making use of Elasticsearch, running out of a Docker container. The source code to spin up the Elasticsearch Docker
-service is obtained from the Git repository https://github.com/sherifabdlnaby/elastdocker
+service is obtained from the Git repository https://github.com/sherifabdlnaby/elastdocker.
 
 For entity recognition, we made use of a Joint Enity-Relation Extration framework known as JEREX, as it has proven to perform quite well on mention extraction, as well
 as entity coreferencing/clustering. The initial code is derived from the https://github.com/lavis-nlp/jerex Git repository and the academnic paper on the framework
-can be found on the repository as well.
+can be found on the repository as well. The code base for the Jerex API Service is under the directory multimodal-jerex. 
 
 For entity linking, we are making use of BLINK, am entity linking framework that was created by Facebook Research. It uses Wikipedia as the knowledge base for disambiguating
 the mentions identified by Jerex. It takes in the mention span, as well as 100 word tokens prior and post the mention span as the context to perform the entity linking. The
 initial code is derived from the https://github.com/facebookresearch/BLINK Git repository and the academnic paper on the framework can be found on the repository as well.
+The code base for the BLINK API service can be found under the directory BLINK_api.
 
 ## Prerequisites:
 
 Before running the services, ensure that you have the following models and requirements to avoid running into errors or missing dependencies 
 when running the API services. 
 
+### Elasticsearch Service
+
+From https://github.com/sherifabdlnaby/elastdocker run:
+
+1. Change directory into the text_entity_extraction directory if you are in the main multimedia_ir directory
+cd text_entity_extraction
+
+2. Clone the Repository
+git clone https://github.com/sherifabdlnaby/elastdocker
+
+3. Change directory into the Elastdocker directory
+cd elastdocker
+
+4. Initialize Elasticsearch Keystore and TLS Self-Signed Certificates
+make setup
+
+### Jerex Service
 
 
-## Multimodal docker setup
+## Docker Services Setup
 
 To run all 
 
 ## BLINK_es
 
+# Notes
 
+- Jerex is currently set to run on CPU, to run it on GPU, set the config 'gpus' under 'text_entity_extraction/multimodal-jerex/configs/docred_joint/test.yaml' from [] to [0] or [whatever_gpu_device]

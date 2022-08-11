@@ -53,10 +53,19 @@ If running training on DocRED, cd into multimodal-jerex and run:
 bash ./scripts/fetch_datasets.sh
 ```
 
-Else, to just run the Jerex API service using the model checkpoints trained by the Jerex team, run:
+Else, to just run the Jerex API service using the model checkpoints trained by the Jerex team, cd into multimodal-jerex and run:
 ```
 bash ./scripts/fetch_models.sh
 ```
+The configs that the API service will be using is from the text_entity_extraction/multimodal-jerex/configs/docred_joint/test.yaml config file, and
+all required configs should already be set, with the default inference compute set to CPU, to set the API service to run on GPU, see the Notes section below.
+
+To use the model checkpoints trained on the DWIE dataset, go to the Google Drive, under the 'DWIE dataset and model/data/models/dwie_joint' folder download the contents,run
+```
+cd text_entity_extraction/multimodal-jerex
+mkdir -p data/models/dwie
+```
+and add all the downloaded contents into the folder
 
 ## Docker Services Setup
 

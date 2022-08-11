@@ -86,11 +86,17 @@ mkdir models
 
 4. Add the models to the text_entity_extraction/BLINK_api/models folder
 
-Setting up Elasticsearch for BLINK API service:
+### Setting up Elasticsearch for BLINK API service:
 
-We will be setting up Elasticsearch to store the Wikipedia entities context text, wikipedia ID as well as Bi-encoder embeddings for the BLINK API Service
+We will be setting up Elasticsearch to store the Wikipedia entities context text, wikipedia ID as well as Bi-encoder embeddings for the BLINK API Service.
 
-
+First, start up the Elasticsearch Docker Service by running the following commands:
+```
+cd text_entity_extraction
+sysctl -w vm.max_map_count=262144
+docker network create -d bridge multimodal
+docker-compose -f docker-compose.elastic.yml up -d
+```
 
 ## Docker Services Setup
 

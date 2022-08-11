@@ -18,7 +18,7 @@ All individuals must be tagged with an numerical id. For generation of embedding
 | Method | Endpoint | Description  |
 |---|---|---|
 | POST | /infer | Takes in an object {"image": im_b64} and predicts the id of the face based on existing list of embeddings <br> Returns the id, confidence and the corresponding bounding box. |
-| POST | /generate | Takes in an object {"id": int, "images": List[Dict['image': im_b64]]}, generates an embedding and saves it locally. |
+| POST | /generate | Takes in an object {"id": int, "images": List[Dict['image': im_b64]]}, generates an embedding and saves it. |
 
 
 ### mtcnn (Flask)
@@ -120,9 +120,3 @@ Refer to `docker-compose.yml` for the volumes mounting
 * Images with transparent background (typically `.png`) throws error when being fed into MTCNN
 * In order to delete embedding, server have to be stopped, manually delete file, then restart. No delete function has been implemented
 * If there are too many faces found, then error will be thrown (When no. of faces detected > triton batch size indicated in `config.pbtxt`)
-
-#### Possible Areas to Explore:
-* Deleting embeddings by ID
-* Deleting all embeddings
-* Updating current embeddings (without images which generated current embedding). Currently, any updates would overwrite existing embeddings.
-* Merging saved embeddings (i.e. 2 saved embeddings identified to be from the same individual)

@@ -1,0 +1,30 @@
+dataset:
+  test_path: ./data/temp.csv
+  # test_path: ./data/articles_2.csv
+  # test_path: ./data/datasets/docred_joint/test_joint.json
+  types_path: ./data/datasets/docred_joint/types.json
+  save_path: ./data
+  csv_path: ./data/articles_entity_linking.csv
+  title_col: 'title'
+  text_col: 'text'
+
+model:
+  model_path:   ./data/models/docred_joint/joint_multi_instance/model.ckpt #./data/models/dwie/model.ckpt
+  tokenizer_path: ./data/models/docred_joint/joint_multi_instance #./data/models/dwie
+  encoder_config_path: ./data/models/docred_joint/joint_multi_instance #./data/models/dwie
+
+inference:
+  test_batch_size: 1
+  max_spans: 200
+  max_coref_pairs: 50
+  max_rel_pairs: 50
+  top_k_mentions: 50
+distribution:
+  gpus: []
+  accelerator: ''
+  prepare_data_per_node: false
+
+hydra:
+  run:
+    dir: ./data/runs/${now:%Y-%m-%d}/${now:%H-%M-%S}/docred_1000
+  output_subdir: run_config

@@ -1,0 +1,24 @@
+model:
+  biencoder_model: models/biencoder_wiki_large.bin
+  biencoder_config: models/biencoder_wiki_large.json
+  crossencoder_model: models/crossencoder_wiki_large.bin
+  crossencoder_config: models/crossencoder_wiki_large.json
+
+logging:
+  output_path: logs/
+
+fast: False
+elastic_candidates: 2500
+top_k: 10
+
+elasticsearch:
+  host: "elasticsearch"
+  port: "9200"
+  username: "elastic"
+  password: "changeme"
+  scheme: "https"
+  verify_certs: False
+  index_name: 'wikipedia'
+  embedding_dim: 1024
+  return_embedding: True
+  search_fields: ['content','title^2']

@@ -27,19 +27,36 @@ when running the API services.
 From https://github.com/sherifabdlnaby/elastdocker run:
 
 1. Change directory into the text_entity_extraction directory if you are in the main multimedia_ir directory
+```
 cd text_entity_extraction
+```
 
 2. Clone the Repository
+```
 git clone https://github.com/sherifabdlnaby/elastdocker
+```
 
 3. Change directory into the Elastdocker directory
+```
 cd elastdocker
+```
 
 4. Initialize Elasticsearch Keystore and TLS Self-Signed Certificates
+```
 make setup
+```
 
 ### Jerex Service
 
+If running training on DocRED, cd into multimodal-jerex and run: 
+```
+bash ./scripts/fetch_datasets.sh
+```
+
+Else, to just run the Jerex API service using the model checkpoints trained by the Jerex team, run:
+```
+bash ./scripts/fetch_models.sh
+```
 
 ## Docker Services Setup
 

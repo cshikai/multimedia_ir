@@ -100,7 +100,10 @@ docker-compose -f docker-compose.elastic.yml up -d
 
 ## Docker Services Setup
 
-To run all 
+To run all services together, run:
+```
+cd text_entity_extraction
+sudo bash text_entity_extraction/run_docker_compose.sh
 
 ## BLINK_es
 

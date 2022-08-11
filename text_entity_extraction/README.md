@@ -121,7 +121,9 @@ cd text_entity_extraction
 sudo bash text_entity_extraction/docker_compose_down.sh
 ```
 
-## BLINK_es
+## Running a test on the Formula 1 dataset
+
+TODO
 
 # Notes
 

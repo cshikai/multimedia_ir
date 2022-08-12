@@ -1,0 +1,45 @@
+{
+  "wikipedia": {
+    "mappings": {
+      "dynamic_templates": [
+        {
+          "strings": {
+            "path_match": "*",
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "keyword"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "content": {
+          "type": "text"
+        },
+        "content_type": {
+          "type": "keyword"
+        },
+        "text_embedding": {
+          "type": "dense_vector",
+          "dims": 1024
+        },
+        "image_embedding": {
+            "type": "dense_vector",
+            "dims": 1024
+          },
+        "entity": {
+          "type": "keyword"
+        },
+        "idx": {
+          "type": "keyword"
+        },
+        "name": {
+          "type": "keyword"
+        },
+        "title": {
+          "type": "text"
+        }
+      }
+    }
+  }
+}

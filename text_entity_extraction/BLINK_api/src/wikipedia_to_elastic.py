@@ -10,11 +10,11 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-wikipedia_embeddings = torch.load('/home/shearman/Desktop/work/BLINK_es/BLINK_api/models/all_entities_large.t7')
+wikipedia_embeddings = torch.load('/BLINK_api/models/all_entities_large.t7')
 print("Number of wikipeda data embeddings: ", wikipedia_embeddings.shape[0])
 
 json_list = []
-with open('/home/shearman/Desktop/work/BLINK_es/BLINK_api/models/entity.jsonl', "r") as fin:
+with open('/BLINK_api/models/entity.jsonl', "r") as fin:
     lines = fin.readlines()
     for line in lines:
         entity = json.loads(line)
@@ -22,7 +22,7 @@ with open('/home/shearman/Desktop/work/BLINK_es/BLINK_api/models/entity.jsonl', 
         
 print('Number of wikipedia pages: ', len(json_list))
 
-document_store = ElasticsearchDocumentStore(host="localhost", port="9200", username="elastic", password="changeme", scheme="https", verify_certs=False, index="wikipedia",embedding_dim=wikipedia_embeddings.shape[1],search_fields=['content','title'])
+document_store = ElasticsearchDocumentStore(host="elasticsearch", port="9200", username="elastic", password="changeme", scheme="https", verify_certs=False, index="wikipedia",embedding_dim=wikipedia_embeddings.shape[1],search_fields=['content','title'])
 
 retriever = BM25Retriever(document_store)
 

@@ -1,0 +1,4 @@
+cd ../text_entity_extraction
+git clone https://github.com/sherifabdlnaby/elastdocker
+cd elastdocker
+make setup

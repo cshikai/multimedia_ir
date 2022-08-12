@@ -107,6 +107,28 @@ python3 BLINK_api/src/wikipedia_to_elastic.py
 
 ** Note: do ensure that you are running the script in an environment that has the Haystack dependencies installed, otherwise run "pip install git+https://github.com/deepset-ai/haystack.git#egg=farm-haystack[colab]"
 
+### Importing F1 dataset onto Elasticsearch
+
+First, start up the Elasticsearch Docker Service by running the following commands:
+```
+cd text_entity_extraction
+sysctl -w vm.max_map_count=262144
+docker network create -d bridge multimodal
+docker-compose -f docker-compose.elastic.yml up -d
+```
+The elasticsearch service should be running on your localhost:9200 and you can check your elasticsearch indexes and perform stack management in Kibana running on localhost:5601
+
+Next, download the F1 dataset from Google Drive from the multim/multimodal test dataset/Formula 1 folder from the articles.csv
+Then, put the articles.csv into the text_entity_extraction/data folder
+
+Next, run the text_entity_extraction/upload_to_elasticsearch.py script to populate the Elasticsearch 'formula1_articles' index
+```
+cd text_entity_extraction
+python3 upload_to_elasticsearch.py
+```
+
+** Note: do ensure that you are running the script in an environment that has the Haystack dependencies installed, otherwise run "pip install git+https://github.com/deepset-ai/haystack.git#egg=farm-haystack[colab]"
+
 ## Docker Services Setup
 
 To run all services together, run:

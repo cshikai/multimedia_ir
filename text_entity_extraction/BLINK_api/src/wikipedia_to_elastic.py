@@ -10,11 +10,11 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-wikipedia_embeddings = torch.load('/BLINK_api/models/all_entities_large.t7')
+wikipedia_embeddings = torch.load('BLINK_api/models/all_entities_large.t7')
 print("Number of wikipeda data embeddings: ", wikipedia_embeddings.shape[0])
 
 json_list = []
-with open('/BLINK_api/models/entity.jsonl', "r") as fin:
+with open('BLINK_api/models/entity.jsonl', "r") as fin:
     lines = fin.readlines()
     for line in lines:
         entity = json.loads(line)

@@ -17,12 +17,12 @@ the mentions identified by Jerex. It takes in the mention span, as well as 100 w
 initial code is derived from the https://github.com/facebookresearch/BLINK Git repository and the academnic paper on the framework can be found on the repository as well.
 The code base for the BLINK API service can be found under the directory BLINK_api.
 
-## Prerequisites:
+## Prerequisites and Setup:
 
 Before running the services, ensure that you have the following models and requirements to avoid running into errors or missing dependencies 
-when running the API services. 
+when running the API services. The steps below also sets up the repository to run the docker compose files necessary to run the text_entity_extraction pipeline
 
-### Elasticsearch Service
+### 1. Elasticsearch Service
 
 From https://github.com/sherifabdlnaby/elastdocker run:
 
@@ -46,7 +46,7 @@ cd elastdocker
 make setup
 ```
 
-### Jerex Service
+### 2. Jerex Service
 
 If running training on DocRED, cd into multimodal-jerex and run: 
 ```
@@ -65,13 +65,87 @@ To use the model checkpoints trained on the DWIE dataset, go to the Google Drive
 cd text_entity_extraction/multimodal-jerex
 mkdir -p data/models/dwie
 ```
-and add all the downloaded contents into the folder
+and add all the downloaded contents into the folder, and change the files paths under the 'model' configs in 'text_entity_extraction/multimodal-jerex/configs/docred_joint/test.yaml' to
+the files in the data/models/dwie folder
+
+** check that the requirements.txt file is in the multimodal-jerex folder as well
+
+### 3. BLINK Service and setting up the Elasticsearch Wikipedia KB
+
+First in order to run the BLINK Service, we will have to download the required model checkpoints used by the BLINK framework.
+
+1. Change directory into the text_entity_extraction/BLINK_api directory if you are in the main multimedia_ir directory
+```
+cd text_entity_extraction/BLINK_api
+```
+2. make a new directory for the models
+```
+mkdir models
+```
+3. Download the models from the multim/BLINK models folder on Google Drive
+
+4. Add the models to the text_entity_extraction/BLINK_api/models folder
+
+### Setting up Elasticsearch for BLINK API service:
+
+We will be setting up Elasticsearch to store the Wikipedia entities context text, wikipedia ID as well as Bi-encoder embeddings for the BLINK API Service.
+
+First, start up the Elasticsearch Docker Service by running the following commands:
+```
+cd text_entity_extraction
+sysctl -w vm.max_map_count=262144
+docker network create -d bridge multimodal
+docker-compose -f docker-compose.elastic.yml up -d
+```
+The elasticsearch service should be running on your localhost:9200 and you can check your elasticsearch indexes and perform stack management in Kibana running on localhost:5601
+
+Next, run the text_entity_extraction/BLINK_api/src/wikipedia_to_elastic.py script to populate the Elasticsearch 'wikipedia' index
+```
+cd text_entity_extraction
+python3 BLINK_api/src/wikipedia_to_elastic.py
+```
+
+** Note: do ensure that you are running the script in an environment that has the Haystack dependencies installed, otherwise run "pip install git+https://github.com/deepset-ai/haystack.git#egg=farm-haystack[colab]"
+
+### Importing F1 dataset onto Elasticsearch
+
+First, start up the Elasticsearch Docker Service by running the following commands:
+```
+cd text_entity_extraction
+sysctl -w vm.max_map_count=262144
+docker network create -d bridge multimodal
+docker-compose -f docker-compose.elastic.yml up -d
+```
+The elasticsearch service should be running on your localhost:9200 and you can check your elasticsearch indexes and perform stack management in Kibana running on localhost:5601
+
+Next, download the F1 dataset from Google Drive from the multim/multimodal test dataset/Formula 1 folder from the articles.csv
+Then, put the articles.csv into the text_entity_extraction/data folder
+
+Next, run the text_entity_extraction/upload_to_elasticsearch.py script to populate the Elasticsearch 'formula1_articles' index
+```
+cd text_entity_extraction
+python3 upload_to_elasticsearch.py
+```
+
+** Note: do ensure that you are running the script in an environment that has the Haystack dependencies installed, otherwise run "pip install git+https://github.com/deepset-ai/haystack.git#egg=farm-haystack[colab]"
 
 ## Docker Services Setup
 
-To run all 
+To run all services together, run:
+```
+cd text_entity_extraction
+sudo bash text_entity_extraction/run_docker_compose.sh
+```
 
-## BLINK_es
+To shut down all Docker services, run:
+```
+cd text_entity_extraction
+sudo bash text_entity_extraction/docker_compose_down.sh
+```
+
+## Running a test on the Formula 1 dataset
+
+TODO
 
 # Notes
 

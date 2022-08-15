@@ -31,6 +31,20 @@ secrets:
   
 services:
 
+  document_population:
+    build: ../document_population
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../document_population/src:/src
+      - ../document_population/data:/data
+    # ports:
+    #   - 8888:8880
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb # set upper limit for how much shared memory container can use
+
+
   mtcnn: 
       # image: mtcnn
       build: ../visual_entity_extraction/facenet_triton/mtcnn 

@@ -1,0 +1,3 @@
+pandas==1.4.2
+pysolr==3.8.1
+farm-haystack==1.6.0

@@ -1,20 +1,22 @@
-FROM nvcr.io/nvidia/pytorch:22.02-py3
+FROM nvcr.io/nvidia/pytorch:20.12-py3
 
 
-# Keeps Python from generating .pyc files in the container
-ENV PYTHONDONTWRITEBYTECODE 1
+# # Keeps Python from generating .pyc files in the container
+# ENV PYTHONDONTWRITEBYTECODE 1
+# # Turns off buffering for easier container logging
+# ENV PYTHONUNBUFFERED 1
 
-# Turns off buffering for easier container logging
-ENV PYTHONUNBUFFERED 1
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y \
+    && apt-get -y install make
 
-WORKDIR /src
-
-ADD requirements.txt /src/requirements.txt
-
-RUN python -m pip install -r requirements.txt
+ADD build /build
+WORKDIR /build
+RUN make
 
 ADD /src /src
 
-# RUN python lumapi/initialize_db.py
+WORKDIR /src
 
 # CMD ["uvicorn", "main:api", "--host", "0.0.0.0"]

@@ -6,6 +6,7 @@ RUN apt-get update \
     && apt-get -y install make
 
 ADD build /build
+
 WORKDIR /build
 RUN make
 

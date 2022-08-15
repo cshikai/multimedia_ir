@@ -12,23 +12,22 @@ volumes:
       o: bind
       device: ./elasticsearch_volume
 
-      
 secrets:
   elasticsearch.keystore:
-    file: ../text_entity_extraction/elastdocker/secrets/keystore/elasticsearch.keystore
+    file: ../elastdocker/secrets/keystore/elasticsearch.keystore
   elasticsearch.service_tokens:
-    file: ../text_entity_extraction/elastdocker/secrets/service_tokens
+    file: ../elastdocker/secrets/service_tokens
   elastic.ca:
-    file: ../text_entity_extraction/elastdocker/secrets/certs/ca/ca.crt
+    file: ../elastdocker/secrets/certs/ca/ca.crt
   elasticsearch.certificate:
-    file: ../text_entity_extraction/elastdocker/secrets/certs/elasticsearch/elasticsearch.crt
+    file: ../elastdocker/secrets/certs/elasticsearch/elasticsearch.crt
   elasticsearch.key:
-    file: ../text_entity_extraction/elastdocker/secrets/certs/elasticsearch/elasticsearch.key
+    file: ../elastdocker/secrets/certs/elasticsearch/elasticsearch.key
   kibana.certificate:
-    file: ../text_entity_extraction/elastdocker/secrets/certs/kibana/kibana.crt
+    file: ../elastdocker/secrets/certs/kibana/kibana.crt
   kibana.key:
-    file: ../text_entity_extraction/elastdocker/secrets/certs/kibana/kibana.key
-  
+    file: ../elastdocker/secrets/certs/kibana/kibana.key
+
 services:
 
   document_population:
@@ -44,28 +43,21 @@ services:
       memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
     shm_size: 32gb # set upper limit for how much shared memory container can use
 
+  mtcnn:
+    # image: mtcnn
+    build: ../visual_entity_extraction/facenet_triton/mtcnn
 
-  mtcnn: 
-      # image: mtcnn
-      build: ../visual_entity_extraction/facenet_triton/mtcnn 
-      deploy:
-        resources:
-          reservations:
-            devices:
-              - driver: nvidia
-                count: 1
-                capabilities: [gpu]
-      environment:
+    environment:
       - NVIDIA_VISIBLE_DEVICES=all
-      ports:
-        - 5000:5000
-      command: python server.py
-      # networks:
-      #     - backend    
+    ports:
+      - 5000:5000
+    command: python server.py
+    # networks:
+    #     - backend    
 
-  triton: 
+  triton:
     # image: triton
-    build: ../triton 
+    build: ../triton
     stdin_open: true
     tty: true
     volumes:
@@ -73,13 +65,6 @@ services:
     ulimits:
       memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
     shm_size: 16gb # set upper limit for how much shared memory container can use
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     ports:
       - 8000:8000
       - 8001:8001
@@ -90,58 +75,64 @@ services:
     #     - backend    
 
   face_id:
-    # image: face_id
     build: ../visual_entity_extraction/facenet_triton/face_id_api
-    ports: #to the host
-        - 8004:8000     #host:container
+    ports:
+      #to the host
+      - 8004:8000 #host:container
+    stdin_open: true
+    tty: true
     ulimits:
       memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
     shm_size: 4gb
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
     volumes:
       - ../visual_entity_extraction/facenet_triton/data:/data
     command: uvicorn main:api --host 0.0.0.0
     # restart: always
 
-  #entity linking service
+    #entity linking service
   blink:
     build: ../text_entity_extraction/
     stdin_open: true
     tty: true
     ports:
       - 5050:5050
-    command: ["uvicorn", "api_service:app", "--host", "0.0.0.0", "--port", "5050"]
+    command: uvicorn api_service:app --host 0.0.0.0 --port 5050
     volumes:
-        - ../text_entity_extraction/BLINK_api/models:/BLINK_api/models
-        - ../text_entity_extraction/BLINK_api/logs:/BLINK_api/logs
-        - ../text_entity_extraction/BLINK_api/configs:/BLINK_api/configs
-        - ../text_entity_extraction/BLINK_api/src:/BLINK_api/src
+      - ../text_entity_extraction/BLINK_api/models:/BLINK_api/models
+      - ../text_entity_extraction/BLINK_api/logs:/BLINK_api/logs
+      - ../text_entity_extraction/BLINK_api/configs:/BLINK_api/configs
+      - ../text_entity_extraction/BLINK_api/src:/BLINK_api/src
     environment:
       NVIDIA_VISIBLE_DEVICES: 0
       CUDA_VISIBLE_DEVICES: 0
     ulimits:
       memlock: -1
     shm_size: '16gb'
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
-  #raw document store and entity store
+  #entity recogniton and relation extration
+  jerex-api:
+    build: ../text_entity_extraction/multimodal-jerex/
+    stdin_open: true
+    tty: true
+    networks:
+      - default
+    ports:
+      - 8080:8080
+    command: uvicorn api_service:app --host 0.0.0.0 --port 8080
+    environment:
+      NVIDIA_VISIBLE_DEVICES: 0
+      CUDA_VISIBLE_DEVICES: 0
+    ulimits:
+      memlock: -1
+    shm_size: '16gb'
+    volumes:
+      - ../text_entity_extraction/multimodal-jerex:/jerex
+  # #raw document store and entity store
   elasticsearch:
     image: elastdocker/elasticsearch:${ELK_VERSION}
     build:
-      context: ../text_entity_extraction/elastdocker/elasticsearch/
+      context: ../elastdocker/elasticsearch/
       args:
         ELK_VERSION: ${ELK_VERSION}
     restart: unless-stopped
@@ -156,8 +147,8 @@ services:
       bootstrap.memory_lock: "true"
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
-      - ../text_entity_extraction/elastdocker/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
-      - ../text_entity_extraction/elastdocker/elasticsearch/config/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties
+      - ../elastdocker/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ../elastdocker/elasticsearch/config/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties
     secrets:
       - source: elasticsearch.keystore
         target: /usr/share/elasticsearch/config/elasticsearch.keystore
@@ -180,19 +171,25 @@ services:
         soft: 200000
         hard: 200000
     healthcheck:
-      test: ["CMD", "sh", "-c", "curl -sf --insecure https://$ELASTIC_USERNAME:$ELASTIC_PASSWORD@localhost:9200/_cat/health | grep -ioE 'green|yellow' || echo 'not green/yellow cluster status'"]
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          "curl -sf --insecure https://$ELASTIC_USERNAME:$ELASTIC_PASSWORD@localhost:9200/_cat/health | grep -ioE 'green|yellow' || echo 'not green/yellow cluster status'"
+        ]
 
   logstash:
     image: elastdocker/logstash:${ELK_VERSION}
     build:
-      context: ../text_entity_extraction/elastdocker/logstash/
+      context: ../elastdocker/logstash/
       args:
         ELK_VERSION: $ELK_VERSION
     restart: unless-stopped
     volumes:
-      - ../text_entity_extraction/elastdocker/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - ../text_entity_extraction/elastdocker/logstash/config/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
-      - ../text_entity_extraction/elastdocker/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ../elastdocker/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ../elastdocker/logstash/config/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+      - ../elastdocker/logstash/pipeline:/usr/share/logstash/pipeline:ro
     secrets:
       - source: elastic.ca
         target: /certs/ca.crt
@@ -205,23 +202,30 @@ services:
       - "5044:5044"
       - "9600:9600"
     healthcheck:
-      test: ["CMD", "curl", "-s" ,"-XGET", "http://127.0.0.1:9600"]
+      test:
+        [
+          "CMD",
+          "curl",
+          "-s",
+          "-XGET",
+          "http://127.0.0.1:9600"
+        ]
 
   kibana:
     image: elastdocker/kibana:${ELK_VERSION}
     build:
-      context: ../text_entity_extraction/elastdocker/kibana/
+      context: ../elastdocker/kibana/
       args:
         ELK_VERSION: $ELK_VERSION
     restart: unless-stopped
     volumes:
-      - ../text_entity_extraction/elastdocker/kibana/config/:/usr/share/kibana/config:ro
+      - ../elastdocker/kibana/config/:/usr/share/kibana/config:ro
     environment:
       ELASTIC_USERNAME: ${ELASTIC_USERNAME}
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       ELASTICSEARCH_HOST_PORT: https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
     env_file:
-      - ../text_entity_extraction/elastdocker/secrets/.env.kibana.token
+      - ../elastdocker/secrets/.env.kibana.token
     secrets:
       - source: elastic.ca
         target: /certs/ca.crt
@@ -231,44 +235,16 @@ services:
         target: /certs/kibana.key
     ports:
       - "5601:5601"
-
-      
-  #entity recogniton and relation extration
-  jerex-api:
-    build: ../text_entity_extraction/multimodal-jerex/
-    stdin_open: true
-    tty: true
-    networks:
-      - default
-    ports:
-      - 8080:8080
-    command: ["uvicorn", "api_service:app", "--host", "0.0.0.0", "--port", "8080"]
-    environment:
-      NVIDIA_VISIBLE_DEVICES: 0
-      CUDA_VISIBLE_DEVICES: 0
-    ulimits:
-      memlock: -1
-    shm_size: '16gb'
-    volumes:
-      - ../text_entity_extraction/multimodal-jerex:/jerex
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
   # neo4j:
-  #  build: neo4j
- 
-  #  environment:
+  #   build: neo4j
+
+  #   environment:
   #   - NEO4JLABS_PLUGINS=${NEO4JLABS_PLUGINS}
   #   - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD}
-  #  ports:
+  #   ports:
   #   - 7687:7687
   #   - 7474:7474
-  #  ulimits:
+  #   ulimits:
   #   memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
-  #  shm_size: 32gb # set upper limit for how much shared memory container can use
+  #   shm_size: 32gb # set upper limit for how much shared memory container can use
 

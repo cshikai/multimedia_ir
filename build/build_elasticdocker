@@ -13,8 +13,8 @@ docker-compose up -d
 
 #list of things to download
 # elasticdocker
-# blink models and entities
-# seed data
+# blink models and seed entities
+# seed image data
 # example data
 # jerex model
 

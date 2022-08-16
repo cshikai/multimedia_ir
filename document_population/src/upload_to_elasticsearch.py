@@ -15,8 +15,8 @@ def convert_to_list(string):
     return string.strip('[]').replace("'","").split(',')
  
 df = pd.read_csv('/data/articles.csv')
-df['images'] = df['images'].map(convert_to_list)
-# df['image_captions'] = df['image_captions'].map(convert_to_list) 
+df['images'] = df['images'].apply(lambda images: ast.literal_eval(images))
+df['image_captions'] = df['image_captions'].apply(lambda image_captions: ast.literal_eval(image_captions))
 print(df.iloc[0])
 docs = []
 

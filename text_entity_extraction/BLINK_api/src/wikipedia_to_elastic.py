@@ -4,43 +4,45 @@ from haystack.nodes import BM25Retriever
 
 import pandas as pd
 import ast
-import json 
+import json
 
 import torch
 import numpy as np
 from tqdm import tqdm
 
-wikipedia_embeddings = torch.load('BLINK_api/models/all_entities_large.t7')
+wikipedia_embeddings = torch.load('/BLINK_api/models/all_entities_large.t7')
 print("Number of wikipeda data embeddings: ", wikipedia_embeddings.shape[0])
 
 json_list = []
-with open('BLINK_api/models/entity.jsonl', "r") as fin:
+with open('/BLINK_api/models/entity.jsonl', "r") as fin:
     lines = fin.readlines()
     for line in lines:
         entity = json.loads(line)
         json_list.append(entity)
-        
+
 print('Number of wikipedia pages: ', len(json_list))
 
-document_store = ElasticsearchDocumentStore(host="elasticsearch", port="9200", username="elastic", password="changeme", scheme="https", verify_certs=False, index="wikipedia",embedding_dim=wikipedia_embeddings.shape[1],search_fields=['content','title'])
+document_store = ElasticsearchDocumentStore(host="elasticsearch", port="9200", username="elastic", password="changeme", scheme="https",
+                                            verify_certs=False, index="wikipedia", embedding_dim=wikipedia_embeddings.shape[1], search_fields=['content', 'title'])
 
 retriever = BM25Retriever(document_store)
 
 docs = []
 
-for index in tqdm(range(0,len(json_list))):
+for index in tqdm(range(0, len(json_list))):
     doc = {}
     doc['content'] = json_list[index]['text']
-    doc['meta'] = {'idx':json_list[index]['idx'],'title':json_list[index]['title'], 'entity': json_list[index]['entity']}
+    doc['meta'] = {'idx': json_list[index]['idx'], 'title': json_list[index]
+                   ['title'], 'entity': json_list[index]['entity']}
     doc['embedding'] = wikipedia_embeddings[index].detach().cpu().numpy()
 
     docs.append(doc)
 
-    if len(docs)%10000 == 0:
+    if len(docs) % 10000 == 0:
         document_store.write_documents(docs)
         docs = []
 
-if len(docs) >0:
+if len(docs) > 0:
     document_store.write_documents(docs)
 
 # uninserted_json_list_indexes = []

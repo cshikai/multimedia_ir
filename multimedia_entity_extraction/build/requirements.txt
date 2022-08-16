@@ -2,6 +2,18 @@
 uvicorn==0.15.0
 pandas==1.4.2
 fastapi==0.70.0
-neo4j==4.4.4
+
+tqdm
+pytorch-lightning==1.6.0
+torchvision
+clearml
+matplotlib
+dask==2021.6.2
+fastparquet==0.6.3
+scikit-learn
+scikit-image
+Pillow
+allennlp
+deepspeed
 #notebook dev
 

@@ -1,0 +1,113 @@
+clearml:
+    project_name: multimodal
+    task_name: visual_grounding_training
+    output_url : s3://experiment-logging/multimodal
+    base_image: cshikai/multimodal_visual_ground:1.0.1 #nvcr.io/nvidia/pytorch:22.01-py3 #nvidia/cuda:11.4.0-cudnn8-devel-ubuntu20.04 #"cshikai/multimodal_visual_ground:1.0.1"
+    queue: "compute"
+    # hyperparameter_project_name: 'multimodal Hyperparameter Tuning'
+    # hyperparameter_task_name: 'BOHB Tuning'
+    # hyperparameter_queue: 'queue-1xV100-32ram'
+    
+data:
+    clearml_datasets:
+        # flickr_manifest:
+        #     id: 03b19522a67b40a7ba138605f0080160
+        #     path: '/data/'
+        # full_manifest:
+        #     id: #ab4ccbef42d646b28c4fe29b933a15ce
+        #     path: '/data/' 
+        # mscoco:
+        #     id: 22a9794ba449430aa5c498fae90a8cc8
+        #     path: '/data/'
+        # flickr:
+        #     id: 4b07c0410f704e61b4ce0157208c09fd
+        #     path: '/data/'
+        visualgenome:
+            id: b589ad32f99849b5a97f4b944ff9a708
+            path: '/data/'
+    
+    transforms:
+        text:
+            Word2Char:
+            ElmoChar2Index:
+
+        image:
+            Resize:
+                size: 256
+            CenterCrop:
+                size: 224
+            ToTensor:
+            NormalizeMeanStd:
+                mean:
+                    - 0.485
+                    - 0.456
+                    - 0.406
+                std:
+                    - 0.229
+                    - 0.224
+                    - 0.225
+model:
+    embeddings:
+        elmo:
+            dropout: 0.0
+
+    feature_hidden_dimension: 1024
+    attention_negative_slope: 0.1 
+    l2_norm_eps: 0.0005
+    leaky_relu_alpha: 0.25
+    
+    textual:
+        lstm:
+            input_dims: 1024
+            num_layers: 2
+            dropout: 0.0
+    
+    visual:
+        num_layers: 4 
+        num_conv_per_layer : 3
+        heatmap_dim: 18
+        
+    loss:
+        gamma_1: 5
+        gamma_2: 10
+training:
+
+    input_models:
+        vgg: 
+            id: f1087001724241e79eb24c4c38e5bc1a
+            path: '/models/vgg/c466539746bac9f0534936c455bb5e2d.vgg16-397923af.pth'
+        elmo: 
+            id: 6ec38b0aefb843179508a906c7cd62dc
+            path: '/models/elmo/'
+
+    resume_from_checkpoint: 0 # 0 or 1
+    trained_model_id: '/models/trained_models/'
+    local_trained_model_path: '/models/trained_models/'
+    model_save_period: 1 # models are saved at the end of every <model_save_period> epoch
+    log_every_n_steps : 2 #logs are written every <log_every_n_steps> steps
+
+    seed: 123
+    num_workers: 0
+    batch_size: 8
+    accumulate_grad_batches: 4
+    n_gpu: 1
+    accelerator: deepspeed #fsdp #'ddp_sharded'
+    
+    epochs: 20
+    learning_rate: 0.0001 #0.001 #half at 10 and again at 15
+    auto_lr: 0 # boolean either 1 or 0 
+    lr_schedule:
+        scheduler: null #string or null #'lr_cyclic' or 'lr_decay'
+        lr_decay:  #check pytoch's ReduceLROnPlateau for argument meaning
+            factor: 0.5
+            patience: 5
+            cooldown: 0
+            eps: 0
+            metric_to_track: 'val_loss'
+        lr_cyclic:
+            mode: 'triangular' #'triangular2' , 'exp_range'
+            lower_lr: 0.0001
+            epoch_size_up: 5 #epoch , not step
+            epoch_size_down: 5 #epoch, not step
+
+                

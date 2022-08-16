@@ -6,9 +6,9 @@ from clearml import Task, Dataset
 
 from config.config import cfg
 
-# Task.force_requirements_env_freeze(
-#     force=True, requirements_file="requirements.txt")
-# Task.add_requirements("torch")
+Task.force_requirements_env_freeze(
+    force=True, requirements_file="requirements.txt")
+Task.add_requirements("torch")
 
 
 def download_datasets(cfg: Dict) -> None:
@@ -39,37 +39,44 @@ def download_models(cfg: Dict) -> None:
 
 
 if __name__ == '__main__':
-    PROJECT_NAME = cfg['clearml']['project_name']
-    TASK_NAME = cfg['clearml']['task_name']
-    OUTPUT_URL = cfg['clearml']['output_url']
+    PROJECT_NAME = 'datasets/multimodal'
+    TASK_NAME = 'text_embedding_generation'
+    OUTPUT_URL = 's3://experiment-logging/multimodal'
+    DATASET_NAME = 'text_embeddings_flickr'
 
-    # Task.add_requirements("git+https://github.com/huggingface/datasets.git")
-    # Task.add_requirements("hydra-core")
-    # Task.add_requirements("pytorch-lightning")
+    DATASET_ROOT = '/data/embeddings/flickr_mscoco_visualgenome/'
 
     # task = Task.init(project_name=PROJECT_NAME,
     #                  task_name=TASK_NAME, output_uri=OUTPUT_URL)
-    # task.connect(cfg)
     # task.set_base_docker(
     #     docker_image=cfg['clearml']['base_image'],
-    #     #     # docker_setup_bash_script=[
-    #     #     #     'pip install pandas',
-    #     #     # ]
     # )
+
+    # task.connect(cfg)
     # task.execute_remotely(
     #     queue_name=cfg['clearml']['queue'], exit_process=True)
 
-    from experiment import Experiment
-    # from torch.multiprocessing import set_start_method
-    # try:
-    #     set_start_method('spawn')
-    # except RuntimeError:
-    #     pass
+    from data.text_tensor.text_embedding_generator import EmbeddingGenerator
 
     # download_models(cfg)
-    # # download_datasets(cfg)
-    task = None
+    # download_datasets(cfg)
 
-    exp = Experiment(cfg, task)
-    exp.run_experiment()
+    from torch.multiprocessing import set_start_method
+    try:
+        set_start_method('spawn')
+    except RuntimeError:
+        pass
+
+    task = None
+    eg = EmbeddingGenerator(cfg, task)
+    eg.run(DATASET_ROOT)
+
+    # clearml_dataset = Dataset.create(
+    #     dataset_project=PROJECT_NAME, dataset_name=DATASET_NAME)
+
+    # clearml_dataset.add_files(DATASET_ROOT)
+    # clearml_dataset.upload(show_progress=True,
+    #                        verbose=True, output_url=OUTPUT_URL)
+    # clearml_dataset.finalize()
+
     # exp.create_torchscript_model('class_model_v2.ckpt')

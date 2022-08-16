@@ -9,6 +9,7 @@ services:
     volumes:
       - ../src:/src
       - ../data:/data
+      - ../models/models
     ports:
       - 8888:8888
     ulimits:

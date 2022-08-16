@@ -43,91 +43,91 @@ services:
       memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
     shm_size: 32gb # set upper limit for how much shared memory container can use
 
-  mtcnn:
-    # image: mtcnn
-    build: ../visual_entity_extraction/facenet_triton/mtcnn
+  # mtcnn:
+  #   # image: mtcnn
+  #   build: ../visual_entity_extraction/facenet_triton/mtcnn
 
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-    ports:
-      - 5000:5000
-    command: python server.py
-    # networks:
-    #     - backend    
+  #   environment:
+  #     - NVIDIA_VISIBLE_DEVICES=all
+  #   ports:
+  #     - 5000:5000
+  #   command: python server.py
+  #   # networks:
+  #   #     - backend    
 
-  triton:
-    # image: triton
-    build: ../triton
-    stdin_open: true
-    tty: true
-    volumes:
-      - ../triton/models:/models
-    ulimits:
-      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
-    shm_size: 16gb # set upper limit for how much shared memory container can use
-    ports:
-      - 8000:8000
-      - 8001:8001
-      - 8002:8002
-    command: tritonserver --model-repository=/models
-    # restart: always
-    # networks:
-    #     - backend    
+  # triton:
+  #   # image: triton
+  #   build: ../triton
+  #   stdin_open: true
+  #   tty: true
+  #   volumes:
+  #     - ../triton/models:/models
+  #   ulimits:
+  #     memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+  #   shm_size: 16gb # set upper limit for how much shared memory container can use
+  #   ports:
+  #     - 8000:8000
+  #     - 8001:8001
+  #     - 8002:8002
+  #   command: tritonserver --model-repository=/models
+  #   # restart: always
+  #   # networks:
+  #   #     - backend    
 
-  face_id:
-    build: ../visual_entity_extraction/facenet_triton/face_id_api
-    ports:
-      #to the host
-      - 8004:8000 #host:container
-    stdin_open: true
-    tty: true
-    ulimits:
-      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
-    shm_size: 4gb
+  # face_id:
+  #   build: ../visual_entity_extraction/facenet_triton/face_id_api
+  #   ports:
+  #     #to the host
+  #     - 8004:8000 #host:container
+  #   stdin_open: true
+  #   tty: true
+  #   ulimits:
+  #     memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+  #   shm_size: 4gb
 
-    volumes:
-      - ../visual_entity_extraction/facenet_triton/data:/data
-    command: uvicorn main:api --host 0.0.0.0
-    # restart: always
+  #   volumes:
+  #     - ../visual_entity_extraction/facenet_triton/data:/data
+  #   command: uvicorn main:api --host 0.0.0.0
+  #   # restart: always
 
-    #entity linking service
-  blink:
-    build: ../text_entity_extraction/
-    stdin_open: true
-    tty: true
-    ports:
-      - 5050:5050
-    command: uvicorn api_service:app --host 0.0.0.0 --port 5050
-    volumes:
-      - ../text_entity_extraction/BLINK_api/models:/BLINK_api/models
-      - ../text_entity_extraction/BLINK_api/logs:/BLINK_api/logs
-      - ../text_entity_extraction/BLINK_api/configs:/BLINK_api/configs
-      - ../text_entity_extraction/BLINK_api/src:/BLINK_api/src
-    environment:
-      NVIDIA_VISIBLE_DEVICES: 0
-      CUDA_VISIBLE_DEVICES: 0
-    ulimits:
-      memlock: -1
-    shm_size: '16gb'
+  #   #entity linking service
+  # blink:
+  #   build: ../text_entity_extraction/
+  #   stdin_open: true
+  #   tty: true
+  #   ports:
+  #     - 5050:5050
+  #   command: uvicorn api_service:app --host 0.0.0.0 --port 5050
+  #   volumes:
+  #     - ../text_entity_extraction/BLINK_api/models:/BLINK_api/models
+  #     - ../text_entity_extraction/BLINK_api/logs:/BLINK_api/logs
+  #     - ../text_entity_extraction/BLINK_api/configs:/BLINK_api/configs
+  #     - ../text_entity_extraction/BLINK_api/src:/BLINK_api/src
+  #   environment:
+  #     NVIDIA_VISIBLE_DEVICES: 0
+  #     CUDA_VISIBLE_DEVICES: 0
+  #   ulimits:
+  #     memlock: -1
+  #   shm_size: '16gb'
 
-  #entity recogniton and relation extration
-  jerex-api:
-    build: ../text_entity_extraction/multimodal-jerex/
-    stdin_open: true
-    tty: true
-    networks:
-      - default
-    ports:
-      - 8080:8080
-    command: uvicorn api_service:app --host 0.0.0.0 --port 8080
-    environment:
-      NVIDIA_VISIBLE_DEVICES: 0
-      CUDA_VISIBLE_DEVICES: 0
-    ulimits:
-      memlock: -1
-    shm_size: '16gb'
-    volumes:
-      - ../text_entity_extraction/multimodal-jerex:/jerex
+  # #entity recogniton and relation extration
+  # jerex-api:
+  #   build: ../text_entity_extraction/multimodal-jerex/
+  #   stdin_open: true
+  #   tty: true
+  #   networks:
+  #     - default
+  #   ports:
+  #     - 8080:8080
+  #   command: uvicorn api_service:app --host 0.0.0.0 --port 8080
+  #   environment:
+  #     NVIDIA_VISIBLE_DEVICES: 0
+  #     CUDA_VISIBLE_DEVICES: 0
+  #   ulimits:
+  #     memlock: -1
+  #   shm_size: '16gb'
+  #   volumes:
+  #     - ../text_entity_extraction/multimodal-jerex:/jerex
   # #raw document store and entity store
   elasticsearch:
     image: elastdocker/elasticsearch:${ELK_VERSION}
@@ -235,6 +235,22 @@ services:
         target: /certs/kibana.key
     ports:
       - "5601:5601"
+
+  image_server:
+    build: ../image_server
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../image_server/src:/src
+      - ../image_server/images:/images
+    # ports:
+    #   - 8888:8880
+    command: uvicorn main:api --host 0.0.0.0
+    restart: always
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb # set upper limit for how much shared memory container can use
+
   # neo4j:
   #   build: neo4j
 

@@ -52,10 +52,12 @@ class VisualGroundingModel(pl.LightningModule):
         """
         word_features, sentence_features = self.text_features(text, seq_len)
         image_features = self.visual_features(image)
-        word_image_heatmap, sentence_image_heatmap, word_image_score, sentence_image_score = self.attention(
+        # word_image_heatmap, sentence_image_heatmap, word_image_score, sentence_image_score = self.attention(
+        #     image_features, word_features, sentence_features)
+        # return word_image_heatmap, sentence_image_heatmap, word_image_score, sentence_image_score
+        word_image_heatmap  = self.attention(
             image_features, word_features, sentence_features)
-
-        return word_image_heatmap, sentence_image_heatmap, word_image_score, sentence_image_score
+        return word_image_heatmap
 
     def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int) -> torch.Tensor:
         '''

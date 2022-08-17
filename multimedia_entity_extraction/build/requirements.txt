@@ -13,7 +13,10 @@ fastparquet==0.6.3
 scikit-learn
 scikit-image
 Pillow
-allennlp
 deepspeed
+SQLAlchemy==1.4.40
+tritonclient[all]==2.24.0
+cached-path==1.1.2
+allennlp==2.9.3
 #notebook dev
 

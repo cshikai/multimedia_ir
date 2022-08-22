@@ -1,16 +1,19 @@
-FROM python:3.8.2-slim-buster
+FROM python:3.8
 
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+
 
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y \
     && apt-get -y install make
 
-WORKDIR /ui
-COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt --no-cache-dir
+ADD build /build
+WORKDIR /build
+RUN make
 
-COPY ./app.py .
+ADD /src /src
+
+WORKDIR /src
 CMD streamlit run app.py

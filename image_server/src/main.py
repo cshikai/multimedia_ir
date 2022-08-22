@@ -1,6 +1,6 @@
 from http import server
 import os
-from typing import  List
+from typing import List
 
 import h5py
 import numpy as np
@@ -13,15 +13,18 @@ api = FastAPI(
     version='1.0.0'
 )
 
+
 class ImageData(BaseModel):
 
-    filename : str
-    image : List[List[List[int]]]
+    filename: str
+    image: List[List[List[int]]]
+
 
 class ImageMetaData(BaseModel):
 
-    server_path : str
-    
+    server_path: str
+
+
 @api.put("/upload/")
 def upload_image(image_data: ImageData):
 
@@ -29,23 +32,25 @@ def upload_image(image_data: ImageData):
     writer = F1ImageWriter()
     image = np.array(image_data['image'])
     response = {}
-    try : 
+    try:
 
-        response['server_path'] = writer.write_single_image(image_data['filename'],image)
+        response['server_path'] = writer.write_single_image(
+            image_data['filename'], image)
     except:
         response['server_path'] = 'upload_failure'
 
     return response
+
 
 @api.get("/download/")
 def download_image(image_metadata: ImageMetaData):
 
     server_path = image_metadata.dict()['server_path']
     reader = F1ImageReader()
-    
+
     response = {}
-    try : 
-        
+    try:
+
         response['image'] = reader.read_single_image(server_path)
         response['status'] = 'success'
     except:
@@ -56,25 +61,30 @@ def download_image(image_metadata: ImageMetaData):
 
 class F1ImageWriter:
     def __init__(self):
-        
+
         self.image_root = '/images'
         self.prefix = 'f1'
-        
-    def write_single_image(self,filename,image):
-        
+
+    def write_single_image(self, filename, image):
+
         article_id, image_id = filename.split('_')
-        folder_path = os.path.join(self.image_root,self.prefix,article_id) 
-        file_path = os.path.join(self.image_root,self.prefix,article_id,image_id + ".h5")
+        folder_path = os.path.join(self.image_root, self.prefix, article_id)
+        file_path = os.path.join(
+            self.image_root, self.prefix, article_id, image_id + ".h5")
 
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+        if os.path.exists(file_path):
+            return file_path
+        else:
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
 
-        file = h5py.File(file_path, "w")
-        _dataset = file.create_dataset(
-        "image", np.shape(image), h5py.h5t.STD_U8BE, data=image)
+            file = h5py.File(file_path, "w")
+            _dataset = file.create_dataset(
+                "image", np.shape(image), h5py.h5t.STD_U8BE, data=image)
 
-        file.close()
-        return file_path
+            file.close()
+            return file_path
+
 
 class F1ImageReader:
 
@@ -82,10 +92,10 @@ class F1ImageReader:
     #     self.image_root = '/images'
     #     self.prefix = 'f1'
 
-    def read_single_image(self,filepath):
-    
+    def read_single_image(self, filepath):
+
         with h5py.File(filepath, "r") as f:
-            
+
             image = f['image'][()].tolist()
-           
+
         return image

@@ -1,0 +1,15 @@
+version: '3.4'
+
+services:
+  ui:
+    build: ../
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../img:/images
+    environment:
+      ELASTIC_USERNAME: ${ELASTIC_USERNAME}
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      ELASTICSEARCH_HOST_PORT: https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
+    ports:
+      - 8501:8501

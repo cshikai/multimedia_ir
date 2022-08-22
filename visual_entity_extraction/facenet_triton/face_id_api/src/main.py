@@ -59,6 +59,3 @@ def generate(img_list: ImageFolder):
     else:
         uploader.save_emb(img_dict['id'], emb)
         return {"Response":"OK"}
-
-
-

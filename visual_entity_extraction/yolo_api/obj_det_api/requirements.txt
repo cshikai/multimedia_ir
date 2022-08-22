@@ -1,0 +1,18 @@
+fastapi==0.77.1
+imageio==2.21.1
+matplotlib
+notebook==6.4.12
+numpy==1.22.3 # CHANGED
+opencv_python==4.5.5.64 # CHANGED
+pandas
+Pillow==9.1.1 # CHANGED
+protobuf==3.20.1 # Downgrade Necessary
+pycocotools
+# pyyaml==6.0
+requests==2.27.1
+scipy==1.8.1
+setuptools==59.5.0 # Downgrade Necessary
+tensorboard >= 1.14
+typing-extensions==3.10.0
+tqdm
+uvicorn==0.17.6

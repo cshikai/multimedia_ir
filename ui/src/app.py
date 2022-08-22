@@ -73,6 +73,10 @@ st.session_state['report'] = query_params.get('report', [''])[0]
 st.session_state['reports'] = st.session_state['reports'] if 'reports' in st.session_state else None
 
 
+def escape_latex(text: str) -> str:
+    return text.replace('$', '\$')
+
+
 def search_reports(query: str) -> List[Report]:
     res = es.search(index="documents", query={"match": {"content": query}})
     results = []
@@ -99,7 +103,7 @@ def get_report(id: int) -> Report:
 
 
 def search_entities(query: str) -> List[Entity]:
-    res = es.search(index="wikipedia", query={"match": {"content": query}})
+    res = es.search(index="wikipedia", query={"match": {"title": query}})
     results = []
     for doc in res['hits']['hits']:
         id = doc['_id']
@@ -119,6 +123,9 @@ def get_entity(id: int) -> Entity:
                     title=res['hits']['hits'][0]['_source']['title'], body=res['hits']['hits'][0]['_source']['content'], associated_reports=associated_reports)
     return result
 
+
+# Info
+st.info('Elasticsearch ID temporarily displayed as report title until title is populated to ES')
 
 # Search Bar
 inp = st.text_input(label='Search', key='searchbar',
@@ -152,7 +159,7 @@ if st.session_state['search']:
             for doc in reports:
                 st.subheader(
                     f"<a href='?report={doc.id}' target='_self'>{doc.title}</a>", anchor="")
-                st.write(doc.body)
+                st.write(escape_latex(doc.body))
 
     with col2:
         if entities:

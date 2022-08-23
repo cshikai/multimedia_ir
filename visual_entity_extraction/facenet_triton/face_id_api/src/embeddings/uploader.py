@@ -34,7 +34,15 @@ class Uploader():
             request = {}
             request["_id"] = id
             request["_index"] = INDEX_NAME
-            request["image_vector"] = emb.tolist()
+            request["_source"] = {}
+            request["_source"]["script"] = {
+                "source":"ctx._source.face_emb = params.vector",
+                "params":{
+                    "vector": emb.numpy()
+                }
+            }
+            request["_op_type"] = 'update'
+
             bulk(self.client, [request])
             self.client.indices.refresh(index=INDEX_NAME)
         return

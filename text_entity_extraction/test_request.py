@@ -97,7 +97,7 @@ def generate_entity_linking_df(results_df):
 
 def generate_entity_linking_df_entities(results_df):
 
-    entities_linking_df = pd.DataFrame(columns=['doc_id','mention', 'mention_type','context_left','context_right'])
+    entities_linking_df = pd.DataFrame(columns=['doc_id','mention','mention_span','mention_type','context_left','context_right'])
 
     for idx, row in results_df.iterrows():
         doc_id = row['doc_id']
@@ -123,7 +123,7 @@ def generate_entity_linking_df_entities(results_df):
                 right_context = re.sub(r"\S*https?:\S*", '', right_context)
                 # print("Right context: ",right_context)
                 # print("\n")
-                entities_linking_df.loc[-1] = [doc_id, head_entity, entity['entity_type'], left_context, right_context]  # adding a row
+                entities_linking_df.loc[-1] = [doc_id, head_entity, tuple(entity_span), entity['entity_type'], left_context, right_context]  # adding a row
                 entities_linking_df.index = entities_linking_df.index + 1  # shifting index
                 entities_linking_df = entities_linking_df.sort_index()  # sorting by index
                 entities.append(head_entity)

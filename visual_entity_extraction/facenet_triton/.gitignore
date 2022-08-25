@@ -1,4 +1,4 @@
-data/f1
+data/**/
 triton/models/*
 
 # Byte-compiled / optimized / DLL files

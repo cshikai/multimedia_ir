@@ -90,7 +90,23 @@ services:
     command: uvicorn main:api --host 0.0.0.0
     # restart: always
 
+  obj_det:
+    build: ../visual_entity_extraction/yolo_api/obj_det_api
+    ports:
+      #to the host
+      - 8005:8000 #host:container
+    stdin_open: true
+    tty: true
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 4gb
+
+    volumes:
+      - ../visual_entity_extraction/yolo_api/data:/data
+    command: uvicorn main:api --host 0.0.0.0
+    # restart: always
     #entity linking service
+
   blink:
     build: ../text_entity_extraction/
     stdin_open: true

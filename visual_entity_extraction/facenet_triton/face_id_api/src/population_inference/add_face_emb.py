@@ -9,6 +9,7 @@ def read_yaml(file_path='config.yaml'):
     with open(file_path, "r") as f:
         return yaml.safe_load(f)
 
+
 config = read_yaml()
 
 img_folder = config['crawl']['save_path']
@@ -19,10 +20,11 @@ if __name__ == '__main__':
         img_list = []
         for image in os.listdir(os.path.join(img_folder, person_id)):
             with open(f"{img_folder}/{person_id}/{image}", "rb") as f:
-                im_bytes = f.read()   
+                im_bytes = f.read()
             im_b64 = base64.b64encode(im_bytes).decode("utf8")
-            img_list.append({'image':im_b64})
+            img_list.append({'image': im_b64})
         headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-        payload = json.dumps({"id":person_id, "images": img_list})
+        payload = json.dumps({"id": person_id, "images": img_list})
 
-        r = requests.post('{}/generate'.format(config['endpt']['fn_endpt']), data=payload, headers=headers)
+        r = requests.post(
+            '{}/generate'.format(config['endpt']['fn_endpt']), data=payload, headers=headers)

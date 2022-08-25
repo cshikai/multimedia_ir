@@ -57,11 +57,11 @@ services:
 
   triton:
     # image: triton
-    build: ../triton
+    build: ../visual_entity_extraction/facenet_triton/triton
     stdin_open: true
     tty: true
     volumes:
-      - ../triton/models:/models
+      - ../visual_entity_extraction/facenet_triton/triton/models:/models
     ulimits:
       memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
     shm_size: 16gb # set upper limit for how much shared memory container can use

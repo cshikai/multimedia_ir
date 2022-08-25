@@ -9,7 +9,7 @@ triton:
   model_name: 'facenet'
 
 ELASTICSEARCH:
-  URL: 'http://es-container:9200'
+  URL: 'https://elasticsearch:9200'
   INDEX_NAME: 'wikipedia'
   ELASTIC_USERNAME: elastic
   ELASTIC_PASSWORD: changeme

@@ -4,15 +4,18 @@ import yaml
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
+
 def read_yaml(file_path='config.yaml'):
     with open(file_path, "r") as f:
         return yaml.safe_load(f)
+
 
 config = read_yaml()
 ELASTIC_URL = config['ELASTICSEARCH']['URL']
 INDEX_NAME = config['ELASTICSEARCH']['INDEX_NAME']
 ELASTIC_USERNAME = config['ELASTICSEARCH']['ELASTIC_USERNAME']
 ELASTIC_PASSWORD = config['ELASTICSEARCH']['ELASTIC_PASSWORD']
+
 
 class Uploader():
 
@@ -22,8 +25,9 @@ class Uploader():
             self.path = path
         else:
             self.client = Elasticsearch(ELASTIC_URL,
-                                    # ca_certs="",
-                                    basic_auth=(ELASTIC_USERNAME, ELASTIC_PASSWORD))
+                                        # ca_certs="",
+                                        verify_certs=False,
+                                        basic_auth=(ELASTIC_USERNAME, ELASTIC_PASSWORD))
 
     def save_emb(self, id, emb):
         if self.local:
@@ -36,8 +40,8 @@ class Uploader():
             request["_index"] = INDEX_NAME
             request["_source"] = {}
             request["_source"]["script"] = {
-                "source":"ctx._source.face_emb = params.vector",
-                "params":{
+                "source": "ctx._source.face_emb = params.vector",
+                "params": {
                     "vector": emb.numpy()
                 }
             }

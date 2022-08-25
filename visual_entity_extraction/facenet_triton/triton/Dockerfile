@@ -1,5 +1,5 @@
 # For more information, please refer to https://aka.ms/vscode-docker-python
-FROM nvcr.io/nvidia/tritonserver:22.02-py3
+FROM nvcr.io/nvidia/tritonserver:20.12-py3
 
 
 # Keeps Python from generating .pyc files in the container

@@ -2,7 +2,7 @@
 uvicorn==0.17.6
 numpy==1.22.3
 fastapi==0.77.1
-Pillow==9.1.0
+Pillow==9.2.0
 requests==2.27.1
 elasticsearch==8.3.3
 # Triton stuffs

@@ -5,7 +5,7 @@ notebook==6.4.12
 numpy==1.22.3 # CHANGED
 opencv_python==4.5.5.64 # CHANGED
 pandas
-Pillow==9.1.1 # CHANGED
+Pillow==9.2.0 # CHANGED
 protobuf==3.20.1 # Downgrade Necessary
 pycocotools
 # pyyaml==6.0

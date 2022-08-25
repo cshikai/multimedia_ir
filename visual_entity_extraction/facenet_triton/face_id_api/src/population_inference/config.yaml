@@ -1,0 +1,9 @@
+crawl:
+  entity_file: 'articles_entity_linked (-3).csv'
+  save_path: '/source_data'
+  
+infer:
+  img_file: 'img.png'
+
+endpt:
+  fn_endpt: http://localhost:8004

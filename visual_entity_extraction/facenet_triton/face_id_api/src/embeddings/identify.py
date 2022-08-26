@@ -201,8 +201,7 @@ class Identify():
             all_cos_id.append(cosine_results['hits']['hits'][0]['_id'])
             # Elasticsearch doesn't allow negative score, hence in ES query, there is a +1, making the range 0-2
             # Over here, we subtract 1 to compensate for the add-one. Cos Sim of 1 = most similar, -1 = most dissimilar
-            all_cos_conf.append(
-                [x-1 for x in cosine_results['hits']['hits'][0]['_score']])
+            all_cos_conf.append(cosine_results['hits']['hits'][0]['_score']-1)
             all_euc_id.append(euc_results['hits']['hits'][0]['_id'])
             all_euc_conf.append(euc_results['hits']['hits'][0]['_score'])
         bbox_int = [[int(x) for x in y] for y in res['box']]

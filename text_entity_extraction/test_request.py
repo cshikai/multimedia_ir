@@ -8,10 +8,11 @@ import time
 
 from haystack.document_stores import ElasticsearchDocumentStore
 
+
 def predict_jerex(dataset: Dict):
-    response = requests.post('http://0.0.0.0:8080/df_link', json = dataset)
-    
-    #ipdb.set_trace()
+    response = requests.post('http://jerex-api:8080/df_link', json=dataset)
+
+    # ipdb.set_trace()
     # print([doc for doc in response.iter_lines()])
     response = response.json()
     # print(type(response))
@@ -22,13 +23,14 @@ def predict_jerex(dataset: Dict):
     print(df.head())
     print(df.info())
 
-    df.to_csv("data/test_jerex.csv",index=False)
+    df.to_csv("data/test_jerex.csv", index=False)
 
     return df
 
+
 def predict_blink(dataset: Dict):
 
-    response = requests.post('http://0.0.0.0:5050/df_link', json = dataset)
+    response = requests.post('http://0.0.0.0:5050/df_link', json=dataset)
     # df_json = json.dumps(response.json())
     # df = pd.read_json(df_json, orient="records")
 
@@ -40,13 +42,15 @@ def predict_blink(dataset: Dict):
     print(df)
     print(df.info())
 
-    df.to_csv("data/articles_entity_linked.csv",index=False)
+    df.to_csv("data/articles_entity_linked.csv", index=False)
 
     return df
 
+
 def generate_entity_linking_df(results_df):
 
-    entities_linking_df = pd.DataFrame(columns=['doc_id','mention', 'mention_type','context_left','context_right'])
+    entities_linking_df = pd.DataFrame(
+        columns=['doc_id', 'mention', 'mention_type', 'context_left', 'context_right'])
 
     for idx, row in results_df.iterrows():
         doc_id = row['doc_id']
@@ -54,40 +58,48 @@ def generate_entity_linking_df(results_df):
             relations = ast.literal_eval(row['relations'])
             tokens = ast.literal_eval(row['tokens'])
         else:
-            relations =  row['relations']
+            relations = row['relations']
             tokens = row['tokens']
         entities = []
         for relation in relations:
-            head_entity = " ".join(tokens[relation['head_span'][0]:relation['head_span'][1]])
+            head_entity = " ".join(
+                tokens[relation['head_span'][0]:relation['head_span'][1]])
             if head_entity not in entities:
                 print("Head Entity:")
                 print(head_entity)
-                left_context = " ".join(tokens[relation['head_span'][0]-100:relation['head_span'][0]])
+                left_context = " ".join(
+                    tokens[relation['head_span'][0]-100:relation['head_span'][0]])
                 left_context = re.sub(r"\S*https?:\S*", '', left_context)
-                print("Left context: ",left_context)
+                print("Left context: ", left_context)
                 print("\n")
-                right_context = " ".join(tokens[relation['head_span'][1]:relation['head_span'][1]+100])
+                right_context = " ".join(
+                    tokens[relation['head_span'][1]:relation['head_span'][1]+100])
                 right_context = re.sub(r"\S*https?:\S*", '', right_context)
-                print("Right context: ",right_context)
+                print("Right context: ", right_context)
                 print("\n")
-                entities_linking_df.loc[-1] = [doc_id, head_entity, relation['head_type'], left_context, right_context]  # adding a row
+                entities_linking_df.loc[-1] = [doc_id, head_entity,
+                                               relation['head_type'], left_context, right_context]  # adding a row
                 entities_linking_df.index = entities_linking_df.index + 1  # shifting index
                 entities_linking_df = entities_linking_df.sort_index()  # sorting by index
                 entities.append(head_entity)
 
-            tail_entity = " ".join(tokens[relation['tail_span'][0]:relation['tail_span'][1]])
+            tail_entity = " ".join(
+                tokens[relation['tail_span'][0]:relation['tail_span'][1]])
             if tail_entity not in entities:
                 print("Tail Entity:")
                 print(tail_entity)
-                left_context = " ".join(tokens[relation['tail_span'][0]-100:relation['tail_span'][0]])
+                left_context = " ".join(
+                    tokens[relation['tail_span'][0]-100:relation['tail_span'][0]])
                 left_context = re.sub(r"\S*https?:\S*", '', left_context)
-                print("Left context: ",left_context)
+                print("Left context: ", left_context)
                 print("\n")
-                right_context = " ".join(tokens[relation['tail_span'][1]:relation['tail_span'][1]+100])
+                right_context = " ".join(
+                    tokens[relation['tail_span'][1]:relation['tail_span'][1]+100])
                 right_context = re.sub(r"\S*https?:\S*", '', right_context)
-                print("Right context: ",right_context)
+                print("Right context: ", right_context)
                 print("\n")
-                entities_linking_df.loc[-1] = [doc_id, tail_entity, relation['tail_type'], left_context, right_context]  # adding a row
+                entities_linking_df.loc[-1] = [doc_id, tail_entity,
+                                               relation['tail_type'], left_context, right_context]  # adding a row
                 entities_linking_df.index = entities_linking_df.index + 1  # shifting index
                 entities_linking_df = entities_linking_df.sort_index()  # sorting by index
                 entities.append(tail_entity)
@@ -95,9 +107,11 @@ def generate_entity_linking_df(results_df):
     print(entities_linking_df.head())
     return entities_linking_df
 
+
 def generate_entity_linking_df_entities(results_df):
 
-    entities_linking_df = pd.DataFrame(columns=['doc_id','mention','mention_span','mention_type','context_left','context_right'])
+    entities_linking_df = pd.DataFrame(columns=[
+                                       'doc_id', 'mention', 'mention_span', 'mention_type', 'context_left', 'context_right'])
 
     for idx, row in results_df.iterrows():
         doc_id = row['doc_id']
@@ -105,7 +119,7 @@ def generate_entity_linking_df_entities(results_df):
             entities_rows = ast.literal_eval(row['entities'])
             tokens = ast.literal_eval(row['tokens'])
         else:
-            entities_rows =  row['entities']
+            entities_rows = row['entities']
             tokens = row['tokens']
         entities = []
         for entity in entities_rows:
@@ -113,17 +127,21 @@ def generate_entity_linking_df_entities(results_df):
             if head_entity not in entities:
                 # print("Head Entity:")
                 # print(head_entity)
-                entity_idx = entity['entity_names'].index(max(entity['entity_names']))
+                entity_idx = entity['entity_names'].index(
+                    max(entity['entity_names']))
                 entity_span = entity['entity_spans'][entity_idx]
-                left_context = " ".join(tokens[entity_span[0]-100:entity_span[0]])
+                left_context = " ".join(
+                    tokens[entity_span[0]-100:entity_span[0]])
                 left_context = re.sub(r"\S*https?:\S*", '', left_context)
                 # print("Left context: ",left_context)
                 # print("\n")
-                right_context = " ".join(tokens[entity_span[1]:entity_span[1]+100])
+                right_context = " ".join(
+                    tokens[entity_span[1]:entity_span[1]+100])
                 right_context = re.sub(r"\S*https?:\S*", '', right_context)
                 # print("Right context: ",right_context)
                 # print("\n")
-                entities_linking_df.loc[-1] = [doc_id, head_entity, tuple(entity_span), entity['entity_type'], left_context, right_context]  # adding a row
+                entities_linking_df.loc[-1] = [doc_id, head_entity, tuple(
+                    entity_span), entity['entity_type'], left_context, right_context]  # adding a row
                 entities_linking_df.index = entities_linking_df.index + 1  # shifting index
                 entities_linking_df = entities_linking_df.sort_index()  # sorting by index
                 entities.append(head_entity)
@@ -136,21 +154,23 @@ if __name__ == '__main__':
 
     start = time.time()
 
-    document_store = ElasticsearchDocumentStore(host= "localhost",
-                                                port= "9200", 
-                                                username= "elastic", 
-                                                password= "changeme", 
-                                                scheme= "https", 
-                                                verify_certs= False, 
-                                                index = 'formula1_articles',
-                                                search_fields= ['content','title'])
+    document_store = ElasticsearchDocumentStore(host="elasticsearch",
+                                                port="9200",
+                                                username="elastic",
+                                                password="changeme",
+                                                scheme="https",
+                                                verify_certs=False,
+                                                index='formula1_articles',
+                                                search_fields=['content', 'title'])
 
     documents = document_store.get_all_documents()
 
-    articles_df = pd.DataFrame(columns=['ID','title','text','elasticsearch_ID'])
+    articles_df = pd.DataFrame(
+        columns=['ID', 'title', 'text', 'elasticsearch_ID'])
 
     for document in documents:
-        articles_df.loc[-1] = [document.meta['ID'], document.meta['link'],document.content,document.id]  # adding a row
+        articles_df.loc[-1] = [document.meta['ID'], document.meta['link'],
+                               document.content, document.id]  # adding a row
         articles_df.index = articles_df.index + 1  # shifting index
         articles_df = articles_df.sort_index()  # sorting by index
 
@@ -191,14 +211,13 @@ if __name__ == '__main__':
         if type(row['entities']) == str:
             entities = ast.literal_eval(row['entities'])
         else:
-            entities =  row['entities']
+            entities = row['entities']
 
         for entity_row in entities:
             count += len(entity_row)
 
     print("total number of entities: ", count)
     print("Avg count of entities: ", count/len(jerex_infered))
-
 
     entity_linking_df = generate_entity_linking_df_entities(jerex_results)
     entity_linking_df = entity_linking_df[entity_linking_df.mention_type != 'TIME']
@@ -212,7 +231,6 @@ if __name__ == '__main__':
     # entity_linking_df.to_csv("data/entity_linking_df.csv",index=False)
     # entity_linking_df = pd.read_csv('/home/shearman/Desktop/work/BLINK_es/data/entity_linking_df.csv')
     # entity_linking_df =entity_linking_df.iloc[:10,:]
-
 
     df_json = entity_linking_df.to_json(orient="records")
     df_json = json.loads(df_json)
@@ -235,7 +253,7 @@ if __name__ == '__main__':
         entity_links = cluster_df['entity_link'].tolist()
         entity_names = cluster_df['entity_names'].tolist()
 
-        for idx in range(0,len(mentions)):
+        for idx in range(0, len(mentions)):
             mention = dict()
             mention['mention'] = mentions[idx]
             mention['mention_type'] = mentions_type[idx]
@@ -251,14 +269,14 @@ if __name__ == '__main__':
 
     results_df = pd.merge(articles_df, entities_df, on=["ID"])
 
-    print(results_df.info())    
-    results_df.to_csv("data/jerex_plus_blink.csv",index=False)
+    print(results_df.info())
+    results_df.to_csv("data/jerex_plus_blink.csv", index=False)
 
-    #Update results to ElasicSearch
+    # Update results to ElasicSearch
     for idx, row in results_df.iterrows():
-        meta_dict = {'entities_identified':row['identified_entities']}
-        document_store.update_document_meta(id=row['elasticsearch_ID'], meta=meta_dict)
+        meta_dict = {'entities_identified': row['identified_entities']}
+        document_store.update_document_meta(
+            id=row['elasticsearch_ID'], meta=meta_dict)
 
     end = time.time()
-    print("Time to complete jerex and entity linking",end - start)
-
+    print("Time to complete jerex and entity linking", end - start)

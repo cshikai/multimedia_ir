@@ -1,7 +1,6 @@
 
 import base64
 import json
-import matplotlib.pyplot as plt
 import requests
 import yaml
 
@@ -28,12 +27,9 @@ if __name__=='__main__':
     res = json.loads(r.text)
     print(res)
 
-
-    import matplotlib.pyplot as plt
     with Image.open(img_file) as im:
         for i, j in enumerate(res['cos_id']):
             draw = ImageDraw.Draw(im)
             draw.rectangle(res['bb'][i])
             draw.text((res['bb'][i][0],res['bb'][i][1]), str(j)+str(res['cos_conf'][i])) #Top left corner
-        plt.imshow(im)
-    plt.show()
+        im.show()

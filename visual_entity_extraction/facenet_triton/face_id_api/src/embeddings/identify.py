@@ -136,17 +136,19 @@ class Identify():
         all_euc_conf = []
         for emb in embs:
             cosine_search_query = {
-                "size": 10,
-                "_source": {
-                    "includes": ["image_vector"]
-                },
                 "query": {
                     "script_score": {
                         "query": {
-                            "match_all": {}
+                            "bool": {
+                                "filter": {
+                                    "exists": {
+                                        "field": "face_emb"
+                                    }
+                                }
+                            }
                         },
                         "script": {
-                            "source": "cosineSimilarity(params.queryVector, 'image_vector') + 1.0",
+                            "source": "cosineSimilarity(params.queryVector, 'face_emb') + 1.0",
                             "params": {
                                 "queryVector": emb.tolist()
                             }
@@ -168,17 +170,19 @@ class Identify():
             """
 
             euc_search_query = {
-                "size": 10,
-                "_source": {
-                    "includes": ["image_vector"]
-                },
                 "query": {
                     "script_score": {
                         "query": {
-                            "match_all": {}
+                            "bool": {
+                                "filter": {
+                                    "exists": {
+                                        "field": "face_emb"
+                                    }
+                                }
+                            }
                         },
                         "script": {
-                            "source": "1 / (1 + l2norm(params.queryVector, 'image_vector'))",
+                            "source": "1 / (1 + l2norm(params.queryVector, 'face_emb'))",
                             "params": {
                                 "queryVector": emb.tolist()
                             }

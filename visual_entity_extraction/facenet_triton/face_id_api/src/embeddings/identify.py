@@ -12,11 +12,13 @@ def read_yaml(file_path='config.yaml'):
     with open(file_path, "r") as f:
         return yaml.safe_load(f)
 
+
 config = read_yaml()
 ELASTIC_URL = config['ELASTICSEARCH']['URL']
 INDEX_NAME = config['ELASTICSEARCH']['INDEX_NAME']
 ELASTIC_USERNAME = config['ELASTICSEARCH']['ELASTIC_USERNAME']
 ELASTIC_PASSWORD = config['ELASTICSEARCH']['ELASTIC_PASSWORD']
+
 
 class Identify():
 
@@ -28,14 +30,14 @@ class Identify():
 
         if not self.local:
             self.client = Elasticsearch(ELASTIC_URL,
-                                    # ca_certs="",
-                                    basic_auth=(ELASTIC_USERNAME, ELASTIC_PASSWORD))
-
+                                        # ca_certs="",
+                                        verify_certs=False,
+                                        basic_auth=(ELASTIC_USERNAME, ELASTIC_PASSWORD))
 
     # def refresh_embedding(self, id_list, embeddings):
     #     self.id_list = id_list
     #     self.embeddings = embeddings
-    #     self.norm_embeddings = torch.stack([x/torch.linalg.norm(x) for x in self.embeddings]) # Used for cosine similarity 
+    #     self.norm_embeddings = torch.stack([x/torch.linalg.norm(x) for x in self.embeddings]) # Used for cosine similarity
     #     self.norm_embeddings = torch.transpose(self.norm_embeddings,0,1)
 
     def _id_by_cosine(self, source_emb, norm_embeddings, id_list, k=1):
@@ -47,7 +49,7 @@ class Identify():
         ------------------------------------
         source_emb          : Tensor of dim [1, 512]
         k                   : top k results to return
-        
+
         """
         source_emb = source_emb/torch.linalg.norm(source_emb)
         cos_sim = torch.matmul(source_emb, norm_embeddings)
@@ -92,7 +94,7 @@ class Identify():
         ------------------------------------
         source_emb          : Tensor of dim [1, 512]
         k                   : top k results to return
-        
+
         """
         source_emb = source_emb/torch.linalg.norm(source_emb)
         cos_sim = torch.matmul(source_emb, norm_embeddings)
@@ -103,12 +105,11 @@ class Identify():
 
         return results, conf
 
-
     def compare(self, img_dict, embeddings, norm_embeddings, id_list):
         res, embs = self._crop_and_get_emb(img_dict)
         if isinstance(embs, type(None)):
             return [], [], [], [], []
-        if len(embeddings)==0:
+        if len(embeddings) == 0:
             return [], [], [], [], []
         embs = torch.from_numpy(embs)
         all_cos_id = []
@@ -116,14 +117,17 @@ class Identify():
         all_cos_conf = []
         all_euc_conf = []
         for i in embs:
-            cur_emb =  torch.unsqueeze(i, dim=0)
-            face_id_cos, conf_cos = self._id_by_cosine(cur_emb, norm_embeddings, id_list,k=1)
-            face_id_euc, conf_euc = self._id_by_euc(cur_emb, embeddings, id_list, k=1)
+            cur_emb = torch.unsqueeze(i, dim=0)
+            face_id_cos, conf_cos = self._id_by_cosine(
+                cur_emb, norm_embeddings, id_list, k=1)
+            face_id_euc, conf_euc = self._id_by_euc(
+                cur_emb, embeddings, id_list, k=1)
             all_cos_id.append(face_id_cos)
             all_cos_conf.append(conf_cos)
             all_euc_id.append(face_id_euc)
             all_euc_conf.append(conf_euc)
-        return all_cos_id, all_cos_conf, all_euc_id, all_euc_conf, res['box']
+        bbox_int = [[int(x) for x in y] for y in res['box']]
+        return all_cos_id, all_cos_conf, all_euc_id, all_euc_conf, bbox_int
 
     def compare_es(self, img_dict):
         res, embs = self._crop_and_get_emb(img_dict)
@@ -156,7 +160,8 @@ class Identify():
                     }
                 }
             }
-            cosine_results = self.client.search(body=cosine_search_query,index=INDEX_NAME)
+            cosine_results = self.client.search(
+                body=cosine_search_query, index=INDEX_NAME)
 
             """
             Unlike cosineSimilarity that represent similarity, 
@@ -190,10 +195,15 @@ class Identify():
                     }
                 }
             }
-            euc_results = self.client.search(body=euc_search_query,index=INDEX_NAME)
+            euc_results = self.client.search(
+                body=euc_search_query, index=INDEX_NAME)
 
             all_cos_id.append(cosine_results['hits']['hits'][0]['_id'])
-            all_cos_conf.append(cosine_results['hits']['hits'][0]['_score'])
+            # Elasticsearch doesn't allow negative score, hence in ES query, there is a +1, making the range 0-2
+            # Over here, we subtract 1 to compensate for the add-one. Cos Sim of 1 = most similar, -1 = most dissimilar
+            all_cos_conf.append(
+                [x-1 for x in cosine_results['hits']['hits'][0]['_score']])
             all_euc_id.append(euc_results['hits']['hits'][0]['_id'])
             all_euc_conf.append(euc_results['hits']['hits'][0]['_score'])
-        return all_cos_id, all_cos_conf, all_euc_id, all_euc_conf, res['box']
+        bbox_int = [[int(x) for x in y] for y in res['box']]
+        return all_cos_id, all_cos_conf, all_euc_id, all_euc_conf, bbox_int

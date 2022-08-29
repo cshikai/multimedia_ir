@@ -1,6 +1,6 @@
 infer:
-  folder: '../data'
+  img_folder: '../data'
 
 endpt:
-  fn_endpt: http://faceid:8004
-  yolo_endpt: http://objdet:8005
+  fn_endpt: http://faceid:8000
+  yolo_endpt: http://objdet:8000

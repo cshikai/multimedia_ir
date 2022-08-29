@@ -1,0 +1,6 @@
+infer:
+  folder: '../data'
+
+endpt:
+  fn_endpt: http://faceid:8004
+  yolo_endpt: http://objdet:8005

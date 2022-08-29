@@ -74,7 +74,19 @@ services:
     # networks:
     #     - backend    
 
-  face_id:
+  visual-client:
+    build: ../visual_entity_extraction/visual_client
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../visual_entity_extraction/visual_client/src:/src
+      - ../visual_entity_extraction/visual_client/data:/data
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb # set upper limit for how much shared memory container can use
+
+
+  faceid:
     build: ../visual_entity_extraction/facenet_triton/face_id_api
     ports:
       #to the host
@@ -90,7 +102,7 @@ services:
     command: uvicorn main:api --host 0.0.0.0
     # restart: always
 
-  obj_det:
+  objdet:
     build: ../visual_entity_extraction/yolo_api/obj_det_api
     ports:
       #to the host

@@ -6,9 +6,22 @@ from PIL import Image
 import pandas as pd
 from sqlalchemy import Table, MetaData, create_engine
 import dask.dataframe as dd
+from elasticsearch import Elasticsearch
 
 from inference_api.common.inference.data_reader import DataReader
 
+
+class VALiveDataReader(DataReader):
+
+    ELASTIC_URL = "http://elasticsearch:9200"
+    FIELDS = ['']
+    def __init__(self):
+        self.client = Elasticsearch(self.ELASTIC_URL)
+
+
+    def get(self,document_id):
+        result = self.client.get(index='documents',id=document_id,stored_fields =self.FIELDS)
+        
 
 class VADataReader(DataReader):
 

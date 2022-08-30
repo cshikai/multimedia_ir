@@ -33,9 +33,11 @@ data:
 
         image:
             Resize:
-                size: 256
-            CenterCrop:
-                size: 224
+                # size: 256
+                height : 224
+                width: 224
+            # CenterCrop:
+            #     size: 224
             ToTensor:
             NormalizeMeanStd:
                 mean:

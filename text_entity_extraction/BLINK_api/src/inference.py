@@ -121,6 +121,7 @@ def inferenceWrapper(cls):
 
                     if len(documents) > 0 and mention["mention"].lower() in document_titles and len(mention_length) > 1:
                         print("Exact matched: ", mention["mention"])
+
                         mentions_to_exact_match["ids"].append(mention["id"])
                         mention["entity_linked"] = mention["mention"].title()
                         mention["entity_link"] = [document for document in documents if document.meta['title'].lower(

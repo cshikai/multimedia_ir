@@ -193,12 +193,12 @@ if __name__ == '__main__':
     # df_json = json.loads(df_json)
     # response = requests.post('http://0.0.0.0:5050/add_entities', json = df_json)
 
-    df_json = articles_df.to_json(orient="records")
-    df_json = json.loads(df_json)
-    jerex_results = predict_jerex(df_json)
-    print("jerex results: ", jerex_results)
+    # df_json = articles_df.to_json(orient="records")
+    # df_json = json.loads(df_json)
+    # jerex_results = predict_jerex(df_json)
+    # print("jerex results: ", jerex_results)
 
-    # jerex_results = pd.read_csv('data/test_jerex.csv')
+    jerex_results = pd.read_csv('data/test_jerex.csv')
     # jerex_infered = jerex_results[jerex_results.relations != '[]']
     # print("relations: ")
     # print(jerex_infered.info())

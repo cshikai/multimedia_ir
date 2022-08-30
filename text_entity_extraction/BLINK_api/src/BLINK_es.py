@@ -69,6 +69,7 @@ def _process_biencoder_dataloader(samples, tokenizer, biencoder_params):
     )
     return dataloader
 
+
 def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer=None):
     biencoder.model.eval()
     labels = []
@@ -79,12 +80,14 @@ def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer
         context_input, _, label_ids = batch
         with torch.no_grad():
             if indexer is not None:
-                context_encoding = biencoder.encode_context(context_input).numpy()
+                context_encoding = biencoder.encode_context(
+                    context_input).numpy()
                 context_encoding = np.ascontiguousarray(context_encoding)
                 scores, indicies = indexer.search_knn(context_encoding, top_k)
             else:
                 scores, batch_embeddings = biencoder.score_candidate(
-                    context_input, None, cand_encs=candidate_encoding  # .to(device)
+                    # .to(device)
+                    context_input, None, cand_encs=candidate_encoding
                 )
                 scores, indicies = scores.topk(top_k)
                 scores = scores.data.numpy()
@@ -96,6 +99,7 @@ def _run_biencoder(biencoder, dataloader, candidate_encoding, top_k=100, indexer
         all_scores.extend(scores)
         embeddings.append(batch_embeddings)
     return labels, nns, all_scores, embeddings
+
 
 def _process_crossencoder_dataloader(context_input, label_input, crossencoder_params):
     tensor_data = TensorDataset(context_input, label_input)
@@ -111,7 +115,8 @@ def _run_crossencoder(crossencoder, dataloader, logger, context_len, device="cud
     accuracy = 0.0
     crossencoder.to(device)
 
-    res = evaluate(crossencoder, dataloader, device, logger, context_len, zeshel=False, silent=False)
+    res = evaluate(crossencoder, dataloader, device, logger,
+                   context_len, zeshel=False, silent=False)
     accuracy = res["normalized_accuracy"]
     logits = res["logits"]
 
@@ -121,6 +126,7 @@ def _run_crossencoder(crossencoder, dataloader, logger, context_len, device="cud
         predictions = []
 
     return accuracy, predictions, logits
+
 
 def load_models(args, logger=None):
     # load biencoder model
@@ -149,9 +155,10 @@ def load_models(args, logger=None):
         crossencoder_params
     )
 
+
 def _load_wiki(
-    args, 
-    logger=None):
+        args,
+        logger=None):
 
     # load all the wikipedia entities
     title2id = {}
@@ -161,19 +168,20 @@ def _load_wiki(
     local_idx = 0
 
     document_store = ElasticsearchDocumentStore(host=args.elasticsearch.host,
-                                                port=args.elasticsearch.port, 
-                                                username=args.elasticsearch.username, 
-                                                password=args.elasticsearch.password, 
-                                                scheme=args.elasticsearch.scheme, 
-                                                verify_certs=args.elasticsearch.verify_certs, 
-                                                index = args.elasticsearch.index_name,
+                                                port=args.elasticsearch.port,
+                                                username=args.elasticsearch.username,
+                                                password=args.elasticsearch.password,
+                                                scheme=args.elasticsearch.scheme,
+                                                verify_certs=args.elasticsearch.verify_certs,
+                                                index=args.elasticsearch.index_name,
                                                 embedding_dim=args.elasticsearch.embedding_dim)
-    
+
     start_time = time.time()
 
-    docs = document_store.get_all_documents(batch_size = 10000)
+    docs = document_store.get_all_documents(batch_size=10000)
 
-    print("time taken to load wikipedia documents" % (time.time() - start_time))
+    print("time taken to load wikipedia documents" %
+          (time.time() - start_time))
 
     for doc in docs:
         entity = doc.meta
@@ -200,6 +208,7 @@ def _load_wiki(
         wikipedia_id2local_id
     )
 
+
 def run(
     args,
     logger,
@@ -221,12 +230,12 @@ def run(
     )
 
     document_store = ElasticsearchDocumentStore(host=args.elasticsearch.host,
-                                                port=args.elasticsearch.port, 
-                                                username=args.elasticsearch.username, 
-                                                password=args.elasticsearch.password, 
-                                                scheme=args.elasticsearch.scheme, 
-                                                verify_certs=args.elasticsearch.verify_certs, 
-                                                index = args.elasticsearch.index_name,
+                                                port=args.elasticsearch.port,
+                                                username=args.elasticsearch.username,
+                                                password=args.elasticsearch.password,
+                                                scheme=args.elasticsearch.scheme,
+                                                verify_certs=args.elasticsearch.verify_certs,
+                                                index=args.elasticsearch.index_name,
                                                 embedding_dim=args.elasticsearch.embedding_dim,
                                                 return_embedding=args.elasticsearch.return_embedding,
                                                 search_fields=list(args.elasticsearch.search_fields))
@@ -238,7 +247,7 @@ def run(
     for sample in samples:
         candidate_documents = retriever.retrieve(query=sample['mention'],
                                                  top_k=args.elastic_candidates
-                                                )
+                                                 )
         documents.extend(candidate_documents)
 
     if len(documents) < 1:
@@ -302,11 +311,12 @@ def run(
     }
 
     dataloader = _process_biencoder_dataloader(
-            samples, biencoder.tokenizer, biencoder_params
+        samples, biencoder.tokenizer, biencoder_params
     )
 
-    top_k = args.top_k if len(candidate_encoding) > args.top_k else len(candidate_encoding)
-    
+    top_k = args.top_k if len(
+        candidate_encoding) > args.top_k else len(candidate_encoding)
+
     candidate_encoding = torch.stack((candidate_encoding))
 
     labels, nns, scores, embeddings = _run_biencoder(
@@ -392,7 +402,7 @@ def run(
 
         sample_prediction = []
         sample_scores = []
-        sample_links = []  
+        sample_links = []
         for index in index_list:
             e_id = entity_list[index]
             e_title = id2title[e_id]
@@ -415,7 +425,8 @@ def run(
 
         if len(samples) > 0:
             overall_unormalized_accuracy = (
-                crossencoder_normalized_accuracy * len(label_input) / len(samples)
+                crossencoder_normalized_accuracy *
+                len(label_input) / len(samples)
             )
         print(
             "overall unnormalized accuracy: %.4f" % overall_unormalized_accuracy
@@ -461,13 +472,13 @@ if __name__ == '__main__':
     ]
 
     (biencoder_accuracy,
-    recall_at,
-    crossencoder_normalized_accuracy,
-    overall_unormalized_accuracy,
-    samples_length,
-    predictions,
-    scores,
-    ) = run(args, logger, *models, data)
+     recall_at,
+     crossencoder_normalized_accuracy,
+     overall_unormalized_accuracy,
+     samples_length,
+     predictions,
+     scores,
+     ) = run(args, logger, *models, data)
 
     print(predictions)
     print(scores)

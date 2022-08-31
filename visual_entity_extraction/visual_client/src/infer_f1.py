@@ -7,7 +7,7 @@ import yaml
 import os
 
 from PIL import Image, ImageDraw
-from elasticsearch import ElasticSearch
+from elasticsearch import Elasticsearch
 
 
 def read_yaml(file_path='config_f1.yaml'):
@@ -34,7 +34,7 @@ if __name__ == '__main__':
         detection_dict = {}
         for img_file in os.listdir(img_folder+'/'+subfolder):
             detection_dict[img_file] = {}
-            with open(img_folder+'/'+img_file, "rb") as f:
+            with open(img_folder+'/'+subfolder+'/'+img_file, "rb") as f:
                 im_bytes = f.read()
             im_b64 = base64.b64encode(im_bytes).decode("utf8")
 

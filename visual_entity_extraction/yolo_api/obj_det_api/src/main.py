@@ -1,6 +1,4 @@
 from yolo.manager import YOLOManager
-# from embeddings.uploader import Uploader
-# from embeddings.identify import Identify
 
 import yaml
 from PIL import Image

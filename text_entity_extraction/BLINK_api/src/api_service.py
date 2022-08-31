@@ -40,6 +40,7 @@ def row_linking(row):
 async def root():
     return {"message": "Hello World"}
 
+
 @app.post("/single_inference")
 async def link(request: Request):
     dict_str = await request.json()
@@ -54,7 +55,7 @@ async def link(request: Request):
         "mention": json_dict['mention'] if json_dict['mention'] is not None else "",
         "context_right": json_dict['context_right'].lower()if json_dict['context_right'] is not None else ""
     }
-    
+
     data_to_link = []
     data_to_link.append(data)
 
@@ -65,6 +66,7 @@ async def link(request: Request):
     json_string = json.dumps(json_string)
 
     return json_string
+
 
 @app.post("/df_link")
 async def link(request: Request):
@@ -95,6 +97,8 @@ async def link(request: Request):
 
     # entity_ids = [row['entity_id'] for row in results['entities']]
     entity_links = [row['entity_link'] for row in results['entities']]
+    entity_links = [entity_link.split("curid=")[-1]
+                    for entity_link in entity_links]
     entity_names = [row['entity_linked'] for row in results['entities']]
     link_type = [row['link_type'] for row in results['entities']]
     score = [row['entity_confidence_score'] for row in results['entities']]
@@ -109,7 +113,7 @@ async def link(request: Request):
     df_linked['link_type'] = link_type
     df_linked['score'] = score
     df_linked['embeddings'] = embedding
-    df.drop(columns=['context_left', 'context_right'])
+    df.drop(columns=['context_left', 'context_right', 'mention_span'])
 
     print(df_linked.head())
     print(df_linked.info())
@@ -118,6 +122,7 @@ async def link(request: Request):
     df_json = json.loads(df_json)
 
     return df_json
+
 
 @app.post("/link_row")
 async def link(request: Request):
@@ -141,6 +146,7 @@ async def link(request: Request):
     df_json = json.loads(df_json)
 
     return df_json
+
 
 @app.post("/add_entities")
 async def link(request: Request):

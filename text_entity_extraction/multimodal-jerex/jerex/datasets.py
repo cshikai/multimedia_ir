@@ -24,7 +24,7 @@ class DocREDDataset(TorchDataset):
     INFERENCE_MODE = 'inference'
 
     def __init__(self, dataset_path, entity_types, relation_types, tokenizer, neg_mention_count=200,
-                 neg_rel_count=200, neg_coref_count=200, max_span_size=10, neg_mention_overlap_ratio=0.5, title_col='title',text_col='text'):
+                 neg_rel_count=200, neg_coref_count=200, max_span_size=10, neg_mention_overlap_ratio=0.5, title_col='title', text_col='text'):
         self._dataset_path = dataset_path
         self._entity_types = entity_types
         self._relation_types = relation_types
@@ -52,11 +52,11 @@ class DocREDDataset(TorchDataset):
         self._pid = 0
         self._tid = 0
 
-        #for loading data from csv
+        # for loading data from csv
         self._title_col = title_col
         self._text_col = text_col
 
-        self._parse_dataset(dataset_path,self._title_col,self._text_col)
+        self._parse_dataset(dataset_path, self._title_col, self._text_col)
 
     def switch_mode(self, mode):
         self._mode = mode
@@ -70,29 +70,56 @@ class DocREDDataset(TorchDataset):
         nlp.add_pipe(nlp.create_pipe('sentencizer'))
 
         paras = text.split("\n")
-        paras = [para for para in paras if len(para)>1]
+        paras = [para for para in paras if len(para) > 1]
 
         token_sents = []
 
         for doc_idx, para in enumerate(paras):
 
             str_sents = list(nlp(para).sents)
-            
+
             num_tokens = 0
             for sent in str_sents:
                 tokens = list(nlp.tokenizer(sent.text))
-                tokens = [token.text.strip() for token in tokens]
+                tokens = [token.text for token in tokens]
 
                 if len(tokens) > 0:
                     num_tokens += len(tokens)
                     token_sents.append(tokens)
-                
+
         if len(token_sents) < 1:
-            token_sents = [['Document','text','cannot','be','processed'],]
+            token_sents = [['Document', 'text', 'cannot', 'be', 'processed'], ]
 
         return token_sents
 
-    def _parse_dataset(self, dataset_path, title_col = 'title', text_col = 'text'):
+    def doc_sents(self, text):
+        nlp = English()
+        nlp.add_pipe(nlp.create_pipe('sentencizer'))
+
+        paras = text.split("\n")
+        paras = [para for para in paras]
+
+        sentences = []
+
+        for doc_idx, para in enumerate(paras):
+
+            str_sents = list(nlp(para).sents)
+
+            num_tokens = 0
+            for sent in str_sents:
+                tokens = list(nlp.tokenizer(sent.text))
+                tokens = [token.text for token in tokens]
+
+                if len(tokens) > 0:
+                    num_tokens += len(tokens)
+                    sentence = {}
+                    sentence['tokens'] = tokens
+                    sentence['sentence'] = sent.text
+                    sentences.append(sentence)
+
+        return sentences
+
+    def _parse_dataset(self, dataset_path, title_col='title', text_col='text'):
 
         if dataset_path.endswith('json'):
             documents = json.load(open(dataset_path))
@@ -103,17 +130,23 @@ class DocREDDataset(TorchDataset):
 
             df = df.head(1000)
 
-            df[text_col] = df[text_col].apply(lambda string: re.sub('\n+', '\n', string))
-            df[text_col] = df[text_col].apply(lambda string: re.sub('\n \n', '\n', string))
+            df[text_col] = df[text_col].apply(
+                lambda string: re.sub('\n+', '\n', string))
+            df[text_col] = df[text_col].apply(
+                lambda string: re.sub('\n \n', '\n', string))
 
             df_copy = df.copy(deep=True)
 
-            df_copy.rename(columns = {title_col:'title'}, inplace = True)
+            df_copy.rename(columns={title_col: 'title'}, inplace=True)
 
-            df_copy['sents'] = df_copy[text_col].apply(lambda text: self.process_csv_text(text))
+            df_copy['original_sents'] = df_copy[text_col].apply(
+                lambda text: self.doc_sents(text))
+
+            df_copy['sents'] = df_copy[text_col].apply(
+                lambda text: self.process_csv_text(text))
 
             for idx, row in df_copy.iterrows():
-                
+
                 if len(row['sents']) > 0:
                     self._parse_document_csv(row)
 
@@ -134,7 +167,8 @@ class DocREDDataset(TorchDataset):
 
         # create document
         doc_tokens = util.flatten([s.tokens for s in sentences])
-        self._create_document(doc_tokens, sentences, entities, relations, doc_encoding, title)
+        self._create_document(doc_tokens, sentences,
+                              entities, relations, doc_encoding, title)
 
     def _parse_document_csv(self, doc):
         title = doc['title'] if 'title' in doc else 'No title'
@@ -154,7 +188,8 @@ class DocREDDataset(TorchDataset):
 
         # create document
         doc_tokens = util.flatten([s.tokens for s in sentences])
-        self._create_document_csv(doc_tokens, sentences, entities, relations, doc_encoding, title, doc_id)
+        self._create_document_csv(
+            doc_tokens, sentences, entities, relations, doc_encoding, title, doc_id, doc['original_sents'])
 
     def _parse_sentences(self, jsentences):
         sentences = []
@@ -168,23 +203,26 @@ class DocREDDataset(TorchDataset):
 
             sentence_tokens = []
 
-            if len(doc_encoding) >= 500:
-                break
+            # if len(doc_encoding) >= 500:
+            #     break
 
             for tok_sent_idx, token_phrase in enumerate(jtokens):
-                token_encoding = self._tokenizer.encode(token_phrase, add_special_tokens=False)
-                
+                token_encoding = self._tokenizer.encode(
+                    token_phrase, add_special_tokens=False)
+
                 if not token_encoding:
-                    token_encoding = [self._tokenizer.convert_tokens_to_ids('[UNK]')]
-                span_start, span_end = (len(doc_encoding), len(doc_encoding) + len(token_encoding))
+                    token_encoding = [
+                        self._tokenizer.convert_tokens_to_ids('[UNK]')]
+                span_start, span_end = (len(doc_encoding), len(
+                    doc_encoding) + len(token_encoding))
 
-                token = self._create_token(tok_doc_idx, tok_sent_idx, span_start, span_end, token_phrase)
+                token = self._create_token(
+                    tok_doc_idx, tok_sent_idx, span_start, span_end, token_phrase)
 
-                if len(doc_encoding) + len(token_encoding) >= 500:
-                    break
+                if len(doc_encoding) + len(token_encoding) < 500:
+                    doc_encoding += token_encoding
 
                 sentence_tokens.append(token)
-                doc_encoding += token_encoding
 
                 tok_doc_idx += 1
 
@@ -214,7 +252,8 @@ class DocREDDataset(TorchDataset):
             entity = self._create_entity(entity_type, entity_phrase)
 
             for _, tokens, phrase, sentence in mention_params:
-                entity_mention = self._create_entity_mention(entity, tokens, sentence, phrase)
+                entity_mention = self._create_entity_mention(
+                    entity, tokens, sentence, phrase)
 
                 entity.add_entity_mention(entity_mention)
                 sentence.add_entity_mention(entity_mention)
@@ -239,13 +278,15 @@ class DocREDDataset(TorchDataset):
             head_entity = entities[head_idx]
             tail_entity = entities[tail_idx]
 
-            relation = self._create_relation(relation_type, head_entity, tail_entity, evidence_sentences)
+            relation = self._create_relation(
+                relation_type, head_entity, tail_entity, evidence_sentences)
             relations.append(relation)
 
         return relations
 
     def _create_token(self, doc_index, sent_index, span_start, span_end, phrase) -> Token:
-        token = Token(self._tid, doc_index, sent_index, span_start, span_end, phrase)
+        token = Token(self._tid, doc_index, sent_index,
+                      span_start, span_end, phrase)
         self._tid += 1
         return token
 
@@ -254,15 +295,17 @@ class DocREDDataset(TorchDataset):
         self._sid += 1
         return mention
 
-    def _create_document(self, tokens, sentences, entities, relations, doc_encoding, title) -> Document:
-        document = Document(self._doc_id, tokens, sentences, entities, relations, doc_encoding, title)
+    def _create_document(self, tokens, sentences, entities, relations, doc_encoding, title, original_sentences) -> Document:
+        document = Document(self._doc_id, tokens, sentences,
+                            entities, relations, doc_encoding, title, original_sentences)
         self._documents[self._doc_id] = document
         self._doc_id += 1
 
         return document
 
-    def _create_document_csv(self, tokens, sentences, entities, relations, doc_encoding, title,doc_id) -> Document:
-        document = Document(doc_id, tokens, sentences, entities, relations, doc_encoding, title)
+    def _create_document_csv(self, tokens, sentences, entities, relations, doc_encoding, title, doc_id, original_sentences) -> Document:
+        document = Document(doc_id, tokens, sentences,
+                            entities, relations, doc_encoding, title, original_sentences)
         self._documents[self._doc_id] = document
         self._doc_id += 1
 
@@ -281,7 +324,8 @@ class DocREDDataset(TorchDataset):
         return mention
 
     def _create_relation(self, relation_type, head_entity, tail_entity, evidence_sentences) -> Relation:
-        relation = Relation(self._rid, relation_type, head_entity, tail_entity, evidence_sentences)
+        relation = Relation(self._rid, relation_type,
+                            head_entity, tail_entity, evidence_sentences)
         self._relations[self._rid] = relation
         self._rid += 1
         return relation
@@ -314,20 +358,28 @@ class DocREDDataset(TorchDataset):
 
         elif self._mode == DocREDDataset.INFERENCE_MODE:
             if self._task == TaskType.JOINT:
-                samples = sampling_joint.create_joint_inference_sample(doc, self._max_span_size)
+                samples = sampling_joint.create_joint_inference_sample(
+                    doc, self._max_span_size)
             elif self._task == TaskType.MENTION_LOCALIZATION:
-                samples = sampling_classify.create_mention_classify_inference_sample(doc, self._max_span_size)
+                samples = sampling_classify.create_mention_classify_inference_sample(
+                    doc, self._max_span_size)
             elif self._task == TaskType.COREFERENCE_RESOLUTION:
-                samples = sampling_classify.create_coref_classify_inference_sample(doc)
+                samples = sampling_classify.create_coref_classify_inference_sample(
+                    doc)
             elif self._task == TaskType.ENTITY_CLASSIFICATION:
                 samples = sampling_classify.create_entity_classify_sample(doc)
             elif self._task == TaskType.RELATION_CLASSIFICATION:
-                samples = sampling_classify.create_rel_classify_inference_sample(doc)
+                samples = sampling_classify.create_rel_classify_inference_sample(
+                    doc)
             else:
                 raise Exception('Invalid task')
 
             samples['doc_ids'] = torch.tensor(doc.doc_id, dtype=torch.long)
             samples['tokens'] = doc.tokens.__tokens__()
+            samples['original_sentences'] = doc._original_sentences
+            samples['sentences'] = [sentence.tokens.__tokens__()
+                                    for sentence in doc.sentences]
+
             return samples
         else:
             raise Exception('Invalid mode')

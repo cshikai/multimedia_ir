@@ -112,7 +112,7 @@ def generate_entity_linking_df(results_df):
 def generate_entity_linking_df_entities(results_df):
 
     entities_linking_df = pd.DataFrame(columns=[
-                                       'doc_id', 'mention', 'mention_span', 'mention_type', 'context_left', 'context_right'])
+                                       'doc_id', 'mention', 'mention_span', 'char_spans', 'mention_type', 'context_left', 'context_right'])
 
     for idx, row in results_df.iterrows():
         doc_id = row['doc_id']
@@ -131,6 +131,7 @@ def generate_entity_linking_df_entities(results_df):
                 entity_idx = entity['entity_names'].index(
                     max(entity['entity_names']))
                 entity_span = entity['entity_spans'][entity_idx]
+                entity_char_span = entity['char_spans'][entity_idx]
                 left_context = " ".join(
                     tokens[entity_span[0]-100:entity_span[0]])
                 left_context = re.sub(r"\S*https?:\S*", '', left_context)
@@ -142,7 +143,7 @@ def generate_entity_linking_df_entities(results_df):
                 # print("Right context: ",right_context)
                 # print("\n")
                 entities_linking_df.loc[-1] = [doc_id, head_entity, tuple(
-                    entity_span), entity['entity_type'], left_context, right_context]  # adding a row
+                    entity_span), entity_char_span, entity['entity_type'], left_context, right_context]  # adding a row
                 entities_linking_df.index = entities_linking_df.index + 1  # shifting index
                 entities_linking_df = entities_linking_df.sort_index()  # sorting by index
                 entities.append(head_entity)
@@ -177,6 +178,7 @@ if __name__ == '__main__':
 
     print(articles_df.info())
     print(articles_df.head())
+    # articles_df = articles_df[:10]
 
     # new_entities = [{"text": " The COVID-19 recession is a global economic recession caused by the COVID-19 pandemic. The recession began in most countries in February 2020. After a year of global economic slowdown that saw stagnation of economic growth and consumer activity, the COVID-19 lockdowns and other precautions taken in early 2020 drove the global economy into crisis. Within seven months, every advanced economy had fallen to recession. The first major sign of recession was the 2020 stock market crash, which saw major indices drop 20 to 30%% in late February and March. Recovery began in early April 2020, as of April 2022, the GDP for most major economies has either returned to or exceeded pre-pandemic levels and many market indices recovered or even set new records by late 2020. ", "idx": "https://en.wikipedia.org/wiki?curid=63462234", "title": "COVID-19 recession", "entity": "COVID-19 recession"},
     #  {"text": " The COVID-19 pandemic, also known as the coronavirus pandemic, is an ongoing global pandemic of coronavirus disease 2019 (COVID-19) caused by severe acute respiratory syndrome coronavirus 2 (SARS-CoV-2). The novel virus was first identified from an outbreak in Wuhan, China, in December 2019. Attempts to contain it there failed, allowing the virus to spread worldwide. The World Health Organization (WHO) declared a Public Health Emergency of International Concern on 30 January 2020 and a pandemic on 11 March 2020. As of 15 April 2022, the pandemic had caused more than 502 million cases and 6.19 million deaths, making it one of the deadliest in history. ", "idx": "https://en.wikipedia.org/wiki?curid=62750956", "title": "COVID-19 pandemic", "entity": "COVID-19 pandemic"},
@@ -193,12 +195,12 @@ if __name__ == '__main__':
     # df_json = json.loads(df_json)
     # response = requests.post('http://0.0.0.0:5050/add_entities', json = df_json)
 
-    # df_json = articles_df.to_json(orient="records")
-    # df_json = json.loads(df_json)
-    # jerex_results = predict_jerex(df_json)
-    # print("jerex results: ", jerex_results)
+    df_json = articles_df.to_json(orient="records")
+    df_json = json.loads(df_json)
+    jerex_results = predict_jerex(df_json)
+    print("jerex results: ", jerex_results)
 
-    jerex_results = pd.read_csv('data/test_jerex.csv')
+    # jerex_results = pd.read_csv('data/test_jerex.csv')
     # jerex_infered = jerex_results[jerex_results.relations != '[]']
     # print("relations: ")
     # print(jerex_infered.info())
@@ -224,12 +226,13 @@ if __name__ == '__main__':
     entity_linking_df = entity_linking_df[entity_linking_df.mention_type != 'TIME']
     entity_linking_df = entity_linking_df[entity_linking_df.mention_type != 'NUM']
     print(entity_linking_df.info())
+
     # entity_linking_df = pd.read_csv('data/articles_entity_linked.csv')
     # entity_linking_df = entity_linking_df[entity_linking_df.entity_names != 'Unknown']
     # print(entity_linking_df.info())
 
-    # print(entity_linking_df)
-    # entity_linking_df.to_csv("data/entity_linking_df.csv",index=False)
+    print(entity_linking_df)
+    entity_linking_df.to_csv("data/entity_linking_df.csv", index=False)
     # entity_linking_df = pd.read_csv('/home/shearman/Desktop/work/BLINK_es/data/entity_linking_df.csv')
     # entity_linking_df =entity_linking_df.iloc[:10,:]
 
@@ -250,7 +253,7 @@ if __name__ == '__main__':
         doc_entities = []
         doc_id = cluster_df['doc_id'].tolist()[0]
         mentions = cluster_df['mention'].tolist()
-        mention_spans = cluster_df['mention_span'].tolist()
+        mention_spans = cluster_df['char_spans'].tolist()
         mentions_type = cluster_df['mention_type'].tolist()
         entity_links = cluster_df['entity_link'].tolist()
         entity_names = cluster_df['entity_names'].tolist()
@@ -277,7 +280,7 @@ if __name__ == '__main__':
 
     # Update results to ElasicSearch
     for idx, row in results_df.iterrows():
-        meta_dict = {'entities_identified': row['identified_entities']}
+        meta_dict = {'text_entities': row['identified_entities']}
         document_store.update_document_meta(
             id=row['elasticsearch_ID'], meta=meta_dict)
 

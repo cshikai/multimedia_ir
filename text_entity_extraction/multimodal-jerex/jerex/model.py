@@ -5,6 +5,7 @@ from multiprocessing import Lock
 
 import re
 import torch
+from nltk.tokenize.treebank import TreebankWordDetokenizer
 
 # torch.multiprocessing.set_start_method('spawn')
 
@@ -59,7 +60,8 @@ class JEREXModel(pl.LightningModule):
                                                         do_lower_case=lowercase,
                                                         cache_dir=cache_path)
 
-        self._encoder_config = BertConfig.from_pretrained(encoder_config_path or encoder_path, cache_dir=cache_path)
+        self._encoder_config = BertConfig.from_pretrained(
+            encoder_config_path or encoder_path, cache_dir=cache_path)
 
         self.model = models.create_model(model_class, encoder_config=self._encoder_config, tokenizer=self._tokenizer,
                                          encoder_path=encoder_path, entity_types=entity_types,
@@ -74,9 +76,12 @@ class JEREXModel(pl.LightningModule):
                                          position_embeddings_count=position_embeddings_count,
                                          cache_path=cache_path)
 
-        self._evaluator = model_class.EVALUATOR(entity_types, relation_types, self._tokenizer)
+        self._evaluator = model_class.EVALUATOR(
+            entity_types, relation_types, self._tokenizer)
 
-        task_weights = [mention_weight, coref_weight, entity_weight, relation_weight]  # loss weights of sub-components
+        # loss weights of sub-components
+        task_weights = [mention_weight, coref_weight,
+                        entity_weight, relation_weight]
         self._compute_loss = self.model.LOSS(task_weights=task_weights)
 
         self._lr = lr
@@ -104,9 +109,11 @@ class JEREXModel(pl.LightningModule):
         """ Setup is run once before training/testing starts """
         # depending on stage (training=fit or testing), convert ground truth for later evaluation
         if stage == 'fit':
-            self._eval_valid_gt = self._evaluator.convert_gt(self.trainer.datamodule.valid_dataset.documents)
+            self._eval_valid_gt = self._evaluator.convert_gt(
+                self.trainer.datamodule.valid_dataset.documents)
         elif stage == 'test':
-            self._eval_test_gt = self._evaluator.convert_gt(self.trainer.datamodule.test_dataset.documents)
+            self._eval_test_gt = self._evaluator.convert_gt(
+                self.trainer.datamodule.test_dataset.documents)
 
     def forward(self, inference=False, **batch):
         max_spans = self._max_spans_train if not inference else self._max_spans_inference
@@ -114,9 +121,8 @@ class JEREXModel(pl.LightningModule):
         max_rel_pairs = self._max_rel_pairs_train if not inference else self._max_rel_pairs_inference
         top_k_mentions = self._top_k_mentions_train if not inference else self._top_k_mentions_inference
 
-
         outputs = self.model(**batch, max_spans=max_spans, max_coref_pairs=max_coref_pairs,
-                             max_rel_pairs=max_rel_pairs,top_k_mentions=top_k_mentions, inference=inference)
+                             max_rel_pairs=max_rel_pairs, top_k_mentions=top_k_mentions, inference=inference)
 
         return outputs
 
@@ -143,22 +149,26 @@ class JEREXModel(pl.LightningModule):
         # this method is called by PL after all validation steps have finished
         if self._do_eval():
             predictions = self._load_predictions()
-            metrics = self._evaluator.compute_metrics(self._eval_valid_gt[:len(predictions)], predictions)
+            metrics = self._evaluator.compute_metrics(
+                self._eval_valid_gt[:len(predictions)], predictions)
 
             # this metric is used to store the best model over epochs and later use it for testing
-            score = metrics[self.model.MONITOR_METRIC[0]][self.model.MONITOR_METRIC[1]]
-            self.log('valid_f1', score, sync_dist=self.trainer.use_ddp, sync_dist_op='max')
+            score = metrics[self.model.MONITOR_METRIC[0]
+                            ][self.model.MONITOR_METRIC[1]]
+            self.log('valid_f1', score,
+                     sync_dist=self.trainer.use_ddp, sync_dist_op='max')
 
             self._delete_predictions()
         else:
-            self.log('valid_f1', 0, sync_dist=self.trainer.use_ddp, sync_dist_op='max')
+            self.log('valid_f1', 0, sync_dist=self.trainer.use_ddp,
+                     sync_dist_op='max')
 
         self._barrier()
 
     def test_step(self, batch, batch_idx):
         """ Implements a test step, i.e. evaluation of test dataset against ground truth """
         # return self._inference(batch, batch_idx)
-        return self._inference_on_csv(batch,batch_idx)
+        return self._inference_on_csv(batch, batch_idx)
 
     # def test_epoch_end(self, outputs):
     #     """ Loads current epoch's test set predictions from disk and computes test metrics """
@@ -213,16 +223,29 @@ class JEREXModel(pl.LightningModule):
         # evaluate batch
         predictions = self._evaluator.convert_batch(**output, batch=batch)
 
-        for doc_id, tokens,(_, mentions, clusters, entities, relations) in zip(batch['doc_ids'], batch['tokens'],predictions):
+        for doc_id, tokens, original_sentences, sentences, (_, mentions, clusters, entities, relations) in zip(batch['doc_ids'], batch['tokens'], batch['original_sentences'], batch['sentences'], predictions):
 
             print("Doc ID: ", doc_id.item())
             print("\n")
-            print("Entities: ",entities)
+            print("Entities: ", entities)
             print("\n")
-            print("Clusters: ",clusters)
+            print("Clusters: ", clusters)
             print("\n")
-            print("Relations: ",relations)
+            print("Relations: ", relations)
             print("\n")
+
+            original_sentences_tokens = [sentence['tokens']
+                                         for sentence in original_sentences]
+            original_sentences_strings = [sentence['sentence']
+                                          for sentence in original_sentences]
+
+            sentence_count = 0
+            cum_len = 0
+            rolling_length = []
+
+            for sentence in sentences:
+                cum_len += len(sentence)
+                rolling_length.append(cum_len)
 
             relations_output = []
             entities_output = []
@@ -231,33 +254,69 @@ class JEREXModel(pl.LightningModule):
 
                 mention_spans = [list(span) for span in mention]
 
+                span_width = [span[1]-span[0] for span in mention_spans]
+
+                char_spans = []
+
+                for mention in mention_spans:
+                    span_start = mention[0]
+
+                    sent_idx = [rolling_length.index(
+                        length) for length in rolling_length if span_start < length][0]
+                    sent = sentences[sent_idx]
+
+                    original_sent_idx = original_sentences_tokens.index(sent)
+                    original_sentence = original_sentences_strings[original_sent_idx]
+
+                    span = TreebankWordDetokenizer().detokenize(
+                        tokens[mention[0]:mention[1]])
+
+                    if span_start > 0:
+                        offset = len("".join(
+                            sent[:span_start-rolling_length[sent_idx]]))-1
+
+                        offset = offset if offset > 0 else 0
+
+                        char_start = original_sentence.find(
+                            span, offset)
+                    else:
+                        char_start = original_sentence.find(span)
+
+                    char_end = char_start + len(span)
+                    char_spans.append(
+                        (original_sent_idx, char_start, char_end))
+
+                    print("span: ", span, " span in orginal sentence: ",
+                          original_sentence[char_start:char_end])
+
+                    print("span indexes: ",
+                          (original_sent_idx, char_start, char_end))
+
                 entities_output.append(
                     {
                         "entity_names": [" ".join(tokens[span[0]:span[1]]) for span in mention_spans],
                         "entity_spans": mention_spans,
                         "entity_type": str(obj_type),
+                        "char_spans": char_spans
                     }
                 )
 
-
             for sub, obj, relation_type in relations:
-            
+
                 sub_spans = list(sub[0])
                 sub_type = sub[1]
                 obj_spans = list(obj[0])
                 obj_type = obj[1]
-
-                
 
                 for sub_span in sub_spans:
                     for obj_span in obj_spans:
                         relations_output.append(
                             {
                                 "head": " ".join(tokens[sub_span[0]:sub_span[1]]),
-                                "head_span": [sub_span[0],sub_span[1]],
+                                "head_span": [sub_span[0], sub_span[1]],
                                 "head_type": str(sub_type),
                                 "tail": " ".join(tokens[obj_span[0]:obj_span[1]]),
-                                "tail_span": [obj_span[0],obj_span[1]],
+                                "tail_span": [obj_span[0], obj_span[1]],
                                 "tail_type": str(obj_type),
                                 "relation": str(relation_type)
                             }
@@ -268,7 +327,7 @@ class JEREXModel(pl.LightningModule):
                         #         "entity_span": [sub_span[0],sub_span[1]],
                         #         "entity_type": str(sub_type),
                         #     }
-                            
+
                         # )
                         # entities_output.append(
                         #     {
@@ -277,37 +336,42 @@ class JEREXModel(pl.LightningModule):
                         #         "entity_type": str(obj_type),
                         #     }
                         # )
-                        
-            relations_output = [i for n, i in enumerate(relations_output) if i not in relations_output[n + 1:]]
+
+            relations_output = [i for n, i in enumerate(
+                relations_output) if i not in relations_output[n + 1:]]
             print(relations_output)
 
-            temp_df = pd.DataFrame(columns=['doc_id', 'tokens', 'entities','relations'])
-            temp_df.loc[-1] = [doc_id.item(),tokens,entities_output,relations_output]  # adding a row
+            temp_df = pd.DataFrame(
+                columns=['doc_id', 'tokens', 'entities', 'relations'])
+            temp_df.loc[-1] = [doc_id.item(), tokens, entities_output,
+                               relations_output]  # adding a row
             temp_df.index = temp_df.index + 1  # shifting index
             temp_df = temp_df.sort_index()  # sorting by index
 
             if not os.path.isfile('./temp.csv'):
-                temp_df.to_csv('./temp.csv',index=False)
+                temp_df.to_csv('./temp.csv', index=False)
             else:
-                temp_df.to_csv('./temp.csv', mode='a', index=False, header=False)
-
-
+                temp_df.to_csv('./temp.csv', mode='a',
+                               index=False, header=False)
 
     def configure_optimizers(self):
         """ Created and configures optimizer and learning rate schedule """
         # this method is called once by PL before training starts
         optimizer_params = self._get_optimizer_params()
-        optimizer = AdamW(optimizer_params, lr=self._lr, weight_decay=self._weight_decay)
+        optimizer = AdamW(optimizer_params, lr=self._lr,
+                          weight_decay=self._weight_decay)
 
         dataloader = self.train_dataloader()
         train_batch_count = len(dataloader)
 
         gpu_dist = self.trainer.num_gpus if self.trainer.use_ddp else 1
-        updates_epoch = train_batch_count // (gpu_dist * self.trainer.accumulate_grad_batches)
+        updates_epoch = train_batch_count // (
+            gpu_dist * self.trainer.accumulate_grad_batches)
         updates_total = updates_epoch * self.trainer.max_epochs
 
         scheduler = transformers.get_linear_schedule_with_warmup(optimizer,
-                                                                 num_warmup_steps=int(self._lr_warmup * updates_total),
+                                                                 num_warmup_steps=int(
+                                                                     self._lr_warmup * updates_total),
                                                                  num_training_steps=updates_total)
         return [optimizer], [{'scheduler': scheduler, 'name': 'learning_rate', 'interval': 'step', 'frequency': 1}]
 
@@ -394,7 +458,7 @@ def train(cfg: TrainConfig):
                                    max_span_size=cfg.sampling.max_span_size,
                                    neg_mention_overlap_ratio=cfg.sampling.neg_mention_overlap_ratio,
                                    final_valid_evaluate=cfg.misc.final_valid_evaluate
-                                                        and cfg.datasets.test_path is None)
+                                   and cfg.datasets.test_path is None)
 
     data_module.setup('fit')
 
@@ -428,7 +492,8 @@ def train(cfg: TrainConfig):
                        max_span_size=cfg.sampling.max_span_size)
 
     checkpoint_path = 'checkpoint'
-    checkpoint_callback = ModelCheckpoint(dirpath=checkpoint_path, mode='max', monitor='valid_f1')
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=checkpoint_path, mode='max', monitor='valid_f1')
     model.save_tokenizer(checkpoint_path)
     model.save_encoder_config(checkpoint_path)
 
@@ -499,6 +564,7 @@ def test(cfg: TestConfig):
     data_module.setup('test')
     trainer.test(model, datamodule=data_module)
 
+
 def test_on_df(cfg: TestConfig):
     """ Loads test dataset and model and creates trainer for JEREX testing """
     overrides = util.get_overrides_dict(mention_threshold=cfg.model.mention_threshold,
@@ -525,7 +591,7 @@ def test_on_df(cfg: TestConfig):
                                    tokenizer=tokenizer, task_type=model_class.TASK_TYPE,
                                    test_path=cfg.dataset.test_path,
                                    test_batch_size=cfg.inference.test_batch_size,
-                                   max_span_size=model.hparams.max_span_size,sampling_processes=cfg.sampling.sampling_processes)
+                                   max_span_size=model.hparams.max_span_size, sampling_processes=cfg.sampling.sampling_processes)
 
     tb_logger = pl.loggers.TensorBoardLogger('.', 'tb')
     csv_logger = pl.loggers.CSVLogger('.', 'cv')
@@ -542,12 +608,13 @@ def test_on_df(cfg: TestConfig):
     trainer.test(model, datamodule=data_module)
 
     if os.path.isfile('./temp.csv'):
-            df = pd.read_csv('./temp.csv')
-            os.remove('./temp.csv')
-            return df
+        df = pd.read_csv('./temp.csv')
+        os.remove('./temp.csv')
+        return df
     else:
         return None
-    
+
+
 def parse_sentences(tokenizer, jsentences):
 
     tid = 0
@@ -563,12 +630,15 @@ def parse_sentences(tokenizer, jsentences):
         sentence_tokens = []
 
         for tok_sent_idx, token_phrase in enumerate(jtokens):
-            token_encoding = tokenizer.encode(token_phrase, add_special_tokens=False, truncation=True)
+            token_encoding = tokenizer.encode(
+                token_phrase, add_special_tokens=False, truncation=True)
             if not token_encoding:
                 token_encoding = [tokenizer.convert_tokens_to_ids('[UNK]')]
-            span_start, span_end = (len(doc_encoding), len(doc_encoding) + len(token_encoding))
+            span_start, span_end = (len(doc_encoding), len(
+                doc_encoding) + len(token_encoding))
 
-            token = Token(tid, tok_doc_idx, tok_sent_idx, span_start, span_end, token_phrase)
+            token = Token(tid, tok_doc_idx, tok_sent_idx,
+                          span_start, span_end, token_phrase)
             tid += 1
 
             sentence_tokens.append(token)
@@ -608,28 +678,32 @@ def inference_on_fly(model, tokenizer, paras, task):
             token_sents.append(tokens)
 
         sentences, doc_encoding = parse_sentences(tokenizer, token_sents)
-        doc = Document(doc_idx, util.flatten(token_sents), sentences, [], [], doc_encoding, 'generic')
+        doc = Document(doc_idx, util.flatten(token_sents),
+                       sentences, [], [], doc_encoding, 'generic')
 
         # doc = Document(doc_id=idx, tokens=[0,], sentences: List[Sentence],
         #          entities: List[Entity], relations: List[Relation], encoding: List[int], title: str)
 
         if task == TaskType.JOINT:
-            samples = sampling_joint.create_joint_inference_sample(doc, model.hparams.max_span_size)
+            samples = sampling_joint.create_joint_inference_sample(
+                doc, model.hparams.max_span_size)
         elif task == TaskType.MENTION_LOCALIZATION:
-            samples = sampling_classify.create_mention_classify_inference_sample(doc, model.hparams.max_span_size)
+            samples = sampling_classify.create_mention_classify_inference_sample(
+                doc, model.hparams.max_span_size)
         elif task == TaskType.COREFERENCE_RESOLUTION:
-            samples = sampling_classify.create_coref_classify_inference_sample(doc)
+            samples = sampling_classify.create_coref_classify_inference_sample(
+                doc)
         elif task == TaskType.ENTITY_CLASSIFICATION:
             samples = sampling_classify.create_entity_classify_sample(doc)
         elif task == TaskType.RELATION_CLASSIFICATION:
-            samples = sampling_classify.create_rel_classify_inference_sample(doc)
+            samples = sampling_classify.create_rel_classify_inference_sample(
+                doc)
         else:
             raise Exception('Invalid task')
 
         samples['doc_ids'] = torch.tensor(doc.doc_id, dtype=torch.long)
         padded_batch = dict()
-        batch = [samples,]
-
+        batch = [samples, ]
 
         for key in samples.keys():
             samples = [s[key] for s in batch]
@@ -643,16 +717,16 @@ def inference_on_fly(model, tokenizer, paras, task):
             output = model(**padded_batch, inference=True)
 
         # evaluate batch
-        _, mentions, clusters, entities, relations = model._evaluator.convert_batch(**output, batch=padded_batch)[0]
+        _, mentions, clusters, entities, relations = model._evaluator.convert_batch(
+            **output, batch=padded_batch)[0]
 
-        print("Entities: ",entities)
-        print("Relations: ",relations)
+        print("Entities: ", entities)
+        print("Relations: ", relations)
 
         tokens = [item for sublist in token_sents for item in sublist]
 
-
         for sub, obj, relation_type in relations:
-            
+
             sub_spans = list(sub[0])
             sub_type = sub[1]
             obj_spans = list(obj[0])
@@ -663,23 +737,24 @@ def inference_on_fly(model, tokenizer, paras, task):
                     relations_output.append(
                         {
                             "head": " ".join(tokens[sub_span[0]:sub_span[1]]),
-                            "head_span": [sub_span[0],sub_span[1]],
+                            "head_span": [sub_span[0], sub_span[1]],
                             "head_type": str(sub_type),
                             "tail": " ".join(tokens[obj_span[0]:obj_span[1]]),
-                            "tail_span": [obj_span[0],obj_span[1]],
+                            "tail_span": [obj_span[0], obj_span[1]],
                             "tail_type": str(obj_type),
                             "relation": str(relation_type)
                         }
                     )
 
-        
-        relation_df.loc[-1] = [doc_idx,tokens,relations_output]  # adding a row
+        relation_df.loc[-1] = [doc_idx, tokens,
+                               relations_output]  # adding a row
         relation_df.index = relation_df.index + 1  # shifting index
         relation_df = relation_df.sort_index()  # sorting by index
 
     # relation_df = relation_df.loc[relation_df.astype(str).drop_duplicates().index]
 
     return relation_df.reset_index(drop=True)
+
 
 def api_call_single(cfg: TestConfig, docs):
     """ Loads test dataset and model and creates trainer for JEREX testing """
@@ -696,18 +771,18 @@ def api_call_single(cfg: TestConfig, docs):
                                             top_k_mentions_inference=cfg.inference.top_k_mentions,
                                             encoder_path=None, **overrides).eval()
 
-
     tokenizer = BertTokenizer.from_pretrained(model.hparams.tokenizer_path,
                                               do_lower_case=model.hparams.lowercase,
-                                            #   do_lower_case=True,
+                                              #   do_lower_case=True,
                                               cache_dir=model.hparams.cache_path)
 
     # read datasets
     model_class = models.get_model(model.hparams.model_type)
 
-    relation_df = inference_on_fly(model, tokenizer, docs,'joint')
+    relation_df = inference_on_fly(model, tokenizer, docs, 'joint')
 
     return relation_df
+
 
 def test_on_fly(cfg: TestConfig):
     """ Loads test dataset and model and creates trainer for JEREX testing """
@@ -724,10 +799,9 @@ def test_on_fly(cfg: TestConfig):
                                             top_k_mentions_inference=cfg.inference.top_k_mentions,
                                             encoder_path=None, **overrides).eval()
 
-
     tokenizer = BertTokenizer.from_pretrained(model.hparams.tokenizer_path,
                                               do_lower_case=model.hparams.lowercase,
-                                            #   do_lower_case=True,
+                                              #   do_lower_case=True,
                                               cache_dir=model.hparams.cache_path)
 
     # read datasets
@@ -738,10 +812,9 @@ def test_on_fly(cfg: TestConfig):
     lowercased = 'The three-night cruises will stop at Penang, while the four-night cruises will stop at both Penang and Port Klang near Kuala Lumpur, with a range of shore excursions available to guests in the two ports of call. These include visits to Penang’s St George’s Church and Batu Caves on the outskirts of the Malaysian capital.'
     uppercased = 'The announcement ends more than two years of cruises-to-nowhere, which came as operators attempt to make cruising safer amid the COVID-19 pandemic. Guests are required to have six months\' validity on their passports and must update the MySejahtera app before they depart. They are also required to comply with local vaccination requirements. Bookings for the cruises opened on Thursday. “We are thrilled to be the first cruise line in Singapore to reconnect holidaymakers with Asia’s beautiful destinations once again,” said Royal Caribbean\'s Asia-Pacific vice president and managing director Angie Stephen. “The vibrant and culture-rich cities of Penang and Kuala Lumpur have so much to offer, and that is only the beginning.” Singapore Tourism Board\'s director of cruise Annie Chang said that holidaymakers can look forward to more international cruises in the near future. "We have been working closely with various governments in southeast asia to align on cruise protocols and policies, and are excited to bring back port calls in Malaysia for sailings as a start,” she said. “Port calls will provide more vacation options and we look forward to seeing more first-time and repeat cruisers in the coming year as more ports in the region open up.”'
 
-    docs = [lowercased+uppercased,]
+    docs = [lowercased+uppercased, ]
 
-    relation_df = inference_on_fly(model, tokenizer, docs,'joint')
+    relation_df = inference_on_fly(model, tokenizer, docs, 'joint')
     relation_df.to_csv('output.csv')
-
 
     return relation_df

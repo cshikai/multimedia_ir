@@ -1,5 +1,8 @@
 version: '3.4'
-
+# networks:
+#   default:
+#     name: multimodal
+#     # external: true
 services:
   multimedia_entity_extraction:
     # runtime: nvidia

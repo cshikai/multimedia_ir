@@ -94,7 +94,8 @@ class Token:
         self._doc_index = doc_index  # original token index in document
         self._sent_index = sent_index  # original token index in sentence
 
-        self._span_start = span_start  # start of token span in document (inclusive)
+        # start of token span in document (inclusive)
+        self._span_start = span_start
         self._span_end = span_end  # end of token span in document (exclusive)
         self._phrase = phrase
 
@@ -427,10 +428,11 @@ class Relation:
 
 class Document:
     def __init__(self, doc_id: int, tokens: List[Token], sentences: List[Sentence],
-                 entities: List[Entity], relations: List[Relation], encoding: List[int], title: str):
+                 entities: List[Entity], relations: List[Relation], encoding: List[int], title: str, original_sentences):
         self._doc_id = doc_id  # ID within the corresponding dataset
 
         self._sentences = sentences
+        self._original_sentences = original_sentences
         self._tokens = tokens
         self._entities = entities
         self._relations = relations

@@ -30,10 +30,20 @@ def infer(img_data: Image):
     """
     img_dict = img_data.dict()
     # forward dict to YOLO
-
-    bbox_list, emb_list = yolo.detect(img_dict)
+    pred_list, emb_list = yolo.detect(img_dict)
+    # res_yolo['bboxes'] format: [x1 y1 x2 y2 conf class]
+    if len(pred_list)==0:
+        obj_bboxes=[]
+        obj_classes=[]
+        obj_conf=[]
+    else:
+        obj_bboxes = [[int(element) for element in sublist[:4]]  for sublist in pred_list[0]]
+        obj_classes = [int(sublist[-1])  for sublist in pred_list[0]]
+        obj_conf = [int(sublist[-2])  for sublist in pred_list[0]]
     ret_dict = {
-        "bboxes": bbox_list,
+        "bbox": obj_bboxes,
+        "classes": obj_classes,
+        "conf": obj_conf,
         "embs": emb_list  
     }
     return ret_dict

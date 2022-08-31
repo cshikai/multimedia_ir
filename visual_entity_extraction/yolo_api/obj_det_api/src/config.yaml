@@ -3,6 +3,6 @@ device: '0'
 img_size: 640
 conf_thres: 0.4
 iou_thres: 0.5
-emb: True
+emb: False
 augment: False
 agnostic_nms: False

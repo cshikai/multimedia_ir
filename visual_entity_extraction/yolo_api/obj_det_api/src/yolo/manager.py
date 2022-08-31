@@ -68,7 +68,7 @@ class YOLOManager():
         img_embs = []
         if config['emb']:
             img_embs = get_embedding(pred, self.classify_model, img, img0)
-        emb_list.append(img_embs.cpu().tolist())
+            emb_list.append(img_embs.cpu().tolist())
 
         # Why need to scale coords ah? Because image is scaled to 640 during pred
         for i, det in enumerate(pred):

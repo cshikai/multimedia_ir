@@ -50,7 +50,8 @@ def create_negative_mentions(doc, pos_mention_spans, neg_mention_count,
                         neg_dist_mention_sizes.append(size)
 
     # count of (inside) overlapping negative mentions and distinct negative mentions
-    overlap_neg_count = min(len(neg_overlap_mention_spans), int(neg_mention_count * overlap_ratio))
+    overlap_neg_count = min(len(neg_overlap_mention_spans), int(
+        neg_mention_count * overlap_ratio))
     dist_neg_count = neg_mention_count - overlap_neg_count
 
     # sample negative entity mentions
@@ -58,18 +59,23 @@ def create_negative_mentions(doc, pos_mention_spans, neg_mention_count,
                                                 overlap_neg_count)
     neg_overlap_mention_spans, neg_overlap_mention_sizes = zip(
         *neg_overlap_mention_samples) if neg_overlap_mention_samples else ([], [])
-    neg_overlap_mention_masks = [create_span_mask(*span, context_size) for span in neg_overlap_mention_spans]
+    neg_overlap_mention_masks = [create_span_mask(
+        *span, context_size) for span in neg_overlap_mention_spans]
 
     neg_dist_mention_samples = random.sample(list(zip(neg_dist_mention_spans, neg_dist_mention_sizes)),
                                              min(len(neg_dist_mention_spans), dist_neg_count))
 
     neg_dist_mention_spans, neg_dist_mention_sizes = zip(*neg_dist_mention_samples) if neg_dist_mention_samples else (
         [], [])
-    neg_dist_mention_masks = [create_span_mask(*span, context_size) for span in neg_dist_mention_spans]
+    neg_dist_mention_masks = [create_span_mask(
+        *span, context_size) for span in neg_dist_mention_spans]
 
-    neg_mention_spans = list(neg_overlap_mention_spans) + list(neg_dist_mention_spans)
-    neg_mention_sizes = list(neg_overlap_mention_sizes) + list(neg_dist_mention_sizes)
-    neg_mention_masks = list(neg_overlap_mention_masks) + list(neg_dist_mention_masks)
+    neg_mention_spans = list(neg_overlap_mention_spans) + \
+        list(neg_dist_mention_spans)
+    neg_mention_sizes = list(neg_overlap_mention_sizes) + \
+        list(neg_dist_mention_sizes)
+    neg_mention_masks = list(neg_overlap_mention_masks) + \
+        list(neg_dist_mention_masks)
 
     return neg_mention_spans, neg_mention_sizes, neg_mention_masks
 
@@ -110,9 +116,11 @@ def create_pos_coref_pairs(doc, pos_mention_spans):
                     m1_phrase = m1.phrase.strip()
                     m2_phrase = m2.phrase.strip()
 
-                    pos_coref_mention_pairs.append((pos_mention_spans.index(s1), pos_mention_spans.index(s2)))
+                    pos_coref_mention_pairs.append(
+                        (pos_mention_spans.index(s1), pos_mention_spans.index(s2)))
                     pos_coref_mention_spans.append((s1, s2))
-                    pos_coref_eds.append(util.get_edit_distance(m1_phrase, m2_phrase))
+                    pos_coref_eds.append(
+                        util.get_edit_distance(m1_phrase, m2_phrase))
 
     return pos_coref_mention_pairs, pos_coref_mention_spans, pos_coref_eds
 
@@ -141,12 +149,14 @@ def create_neg_coref_pairs(doc, pos_mention_spans, neg_rel_count):
                 neg_eds.append(util.get_edit_distance(m1_phrase, m2_phrase))
 
     neg_samples = list(zip(neg_coref_spans, neg_eds))
-    neg_samples = random.sample(neg_samples, min(len(neg_samples), neg_rel_count))
+    neg_samples = random.sample(
+        neg_samples, min(len(neg_samples), neg_rel_count))
     neg_coref_spans, neg_eds = zip(*neg_samples) if neg_samples else ([], [])
     neg_coref_spans = list(neg_coref_spans)
     neg_eds = list(neg_eds)
 
-    neg_coref_mention_pairs = [(pos_mention_spans.index(s1), pos_mention_spans.index(s2)) for s1, s2 in neg_coref_spans]
+    neg_coref_mention_pairs = [(pos_mention_spans.index(
+        s1), pos_mention_spans.index(s2)) for s1, s2 in neg_coref_spans]
 
     return neg_coref_mention_pairs, neg_coref_spans, neg_eds
 
@@ -173,7 +183,8 @@ def create_coref_candidates(doc, pos_mention_spans):
                 # add edit distance between the two mentions
                 eds.append(util.get_edit_distance(m1_phrase, m2_phrase))
 
-    coref_mention_pairs = [(pos_mention_spans.index(s1), pos_mention_spans.index(s2)) for s1, s2 in coref_spans]
+    coref_mention_pairs = [(pos_mention_spans.index(
+        s1), pos_mention_spans.index(s2)) for s1, s2 in coref_spans]
     return coref_mention_pairs, coref_spans, eds
 
 
@@ -183,7 +194,8 @@ def create_entities(doc, pos_mention_spans):
     entity_types = []
 
     for e in doc.entities:
-        entities.append([pos_mention_spans.index(m.span) for m in e.entity_mentions])
+        entities.append([pos_mention_spans.index(m.span)
+                        for m in e.entity_mentions])
         entity_types.append(e.entity_type.index)
 
     return entities, entity_types
@@ -220,7 +232,8 @@ def create_pos_relations(doc, rel_type_count):
 
     for pair, rels in rels_between_entities.items():
         rel_types = [r.relation_type.index for r in rels]
-        one_hot = [(1 if t in rel_types else 0) for t in range(0, rel_type_count)]
+        one_hot = [(1 if t in rel_types else 0)
+                   for t in range(0, rel_type_count)]
 
         pos_rel_entity_pairs.append(pair)
         pos_rel_types.append(one_hot)
@@ -242,7 +255,8 @@ def create_neg_relations(entities, rels_between_entities, rel_type_count, neg_re
                     neg_unrelated.append(pair)
 
     # sample negative relations
-    neg_unrelated = random.sample(neg_unrelated, min(len(neg_unrelated), neg_rel_count))
+    neg_unrelated = random.sample(
+        neg_unrelated, min(len(neg_unrelated), neg_rel_count))
     neg_rel_entity_pairs, neg_rel_types = [], []
 
     for pair in neg_unrelated:
@@ -280,7 +294,8 @@ def create_rel_mention_pairs(doc, rel_entity_pairs, pos_mention_spans, context_s
                 rel_mention_pairs.append(mention_pair)
 
                 # context between mentions
-                rel_ctx_masks.append(create_rel_mask(m1.span, m2.span, context_size))
+                rel_ctx_masks.append(create_rel_mask(
+                    m1.span, m2.span, context_size))
 
                 # token and sentence distance of mentions
                 token_dist = get_mention_token_dist(m1, m2)
@@ -359,7 +374,8 @@ def create_mention_tensors(ctx_size, pos_mention_spans, pos_mention_masks, pos_m
         mention_masks = torch.stack(mention_masks)
         mention_sizes = torch.tensor(mention_sizes, dtype=torch.long)
         mention_spans = torch.tensor(mention_spans, dtype=torch.long)
-        mention_sample_masks = torch.ones([mention_masks.shape[0]], dtype=torch.bool)
+        mention_sample_masks = torch.ones(
+            [mention_masks.shape[0]], dtype=torch.bool)
     else:
         # corner case handling (no pos/neg entities)
         mention_types = torch.zeros([1], dtype=torch.long)
@@ -379,8 +395,10 @@ def create_mention_candidate_tensors(ctx_size, mention_masks, mention_sizes, men
         mention_orig_spans = torch.tensor(mention_orig_spans, dtype=torch.long)
         mention_masks = torch.stack(mention_masks)
         mention_sizes = torch.tensor(mention_sizes, dtype=torch.long)
-        mention_sent_indices = torch.tensor(mention_sent_indices, dtype=torch.long)
-        mention_sample_masks = torch.tensor([1] * mention_masks.shape[0], dtype=torch.bool)
+        mention_sent_indices = torch.tensor(
+            mention_sent_indices, dtype=torch.long)
+        mention_sample_masks = torch.tensor(
+            [1] * mention_masks.shape[0], dtype=torch.bool)
     else:
         # corner case handling (no entities)
         mention_spans = torch.zeros([1, 2], dtype=torch.long)
@@ -401,13 +419,16 @@ def create_coref_tensors(pos_coref_mention_pairs, pos_eds,
 
     coref_mention_pairs = pos_coref_mention_pairs + neg_coref_mention_pairs
     coref_ed = pos_eds + neg_eds
-    coref_types = [1] * len(pos_coref_mention_pairs) + [0] * len(neg_coref_mention_pairs)
+    coref_types = [1] * len(pos_coref_mention_pairs) + \
+        [0] * len(neg_coref_mention_pairs)
 
     if coref_mention_pairs:
-        coref_mention_pairs = torch.tensor(coref_mention_pairs, dtype=torch.long)
+        coref_mention_pairs = torch.tensor(
+            coref_mention_pairs, dtype=torch.long)
         coref_types = torch.tensor(coref_types, dtype=torch.long)
         coref_ed = torch.tensor(coref_ed, dtype=torch.long)
-        coref_sample_masks = torch.ones([coref_mention_pairs.shape[0]], dtype=torch.bool)
+        coref_sample_masks = torch.ones(
+            [coref_mention_pairs.shape[0]], dtype=torch.bool)
     else:
         coref_mention_pairs = torch.zeros([1, 2], dtype=torch.long)
         coref_types = torch.zeros([1], dtype=torch.long)
@@ -420,8 +441,10 @@ def create_coref_tensors(pos_coref_mention_pairs, pos_eds,
 def create_entity_tensors(entities, entity_types):
     """ Creates necessary tensors for multi-instance entity typing """
     if entities:
-        entity_masks = util.padded_stack([torch.ones(len(e), dtype=torch.bool) for e in entities])
-        entities = util.padded_stack([torch.tensor(e, dtype=torch.long) for e in entities])
+        entity_masks = util.padded_stack(
+            [torch.ones(len(e), dtype=torch.bool) for e in entities])
+        entities = util.padded_stack(
+            [torch.tensor(e, dtype=torch.long) for e in entities])
         entity_types = torch.tensor(entity_types, dtype=torch.long)
         entity_sample_masks = torch.ones([entities.shape[0]], dtype=torch.bool)
     else:
@@ -437,7 +460,8 @@ def create_entity_pair_tensors(rel_entity_pairs):
     """ Creates tensors of entity (cluster) pairs """
     if rel_entity_pairs:
         rel_entity_pairs = torch.tensor(rel_entity_pairs, dtype=torch.long)
-        rel_sample_masks = torch.ones([rel_entity_pairs.shape[0]], dtype=torch.bool)
+        rel_sample_masks = torch.ones(
+            [rel_entity_pairs.shape[0]], dtype=torch.bool)
     else:
         # corner case handling (no pairs)
         rel_entity_pairs = torch.zeros([1, 2], dtype=torch.long)
@@ -455,7 +479,8 @@ def create_rel_global_tensors(pos_rel_entity_pairs, pos_rel_types,
     if rel_entity_pairs:
         rel_entity_pairs = torch.tensor(rel_entity_pairs, dtype=torch.long)
         rel_types = torch.tensor(rel_types, dtype=torch.long)
-        rel_sample_masks = torch.ones([rel_entity_pairs.shape[0]], dtype=torch.bool)
+        rel_sample_masks = torch.ones(
+            [rel_entity_pairs.shape[0]], dtype=torch.bool)
     else:
         # corner case handling (no pos/neg relations)
         rel_entity_pairs = torch.zeros([1, 2], dtype=torch.long)
@@ -486,13 +511,18 @@ def create_rel_mi_tensors(context_size, pos_rel_entity_pair_mp, pos_rel_mention_
     rel_sentence_distances = pos_rel_sentence_distances + neg_rel_sentence_distances
 
     if rel_entity_pair_mp:
-        rel_pair_masks = util.padded_stack([torch.ones(len(e), dtype=torch.bool) for e in rel_entity_pair_mp])
-        rel_entity_pair_mp = util.padded_stack([torch.tensor(e, dtype=torch.long) for e in rel_entity_pair_mp])
-        rel_mention_pair_ep = torch.tensor(rel_mention_pair_ep, dtype=torch.long)
+        rel_pair_masks = util.padded_stack(
+            [torch.ones(len(e), dtype=torch.bool) for e in rel_entity_pair_mp])
+        rel_entity_pair_mp = util.padded_stack(
+            [torch.tensor(e, dtype=torch.long) for e in rel_entity_pair_mp])
+        rel_mention_pair_ep = torch.tensor(
+            rel_mention_pair_ep, dtype=torch.long)
         rel_mention_pairs = torch.tensor(rel_mention_pairs, dtype=torch.long)
         rel_ctx_masks = torch.stack(rel_ctx_masks)
-        rel_token_distances = torch.tensor(rel_token_distances, dtype=torch.long)
-        rel_sentence_distances = torch.tensor(rel_sentence_distances, dtype=torch.long)
+        rel_token_distances = torch.tensor(
+            rel_token_distances, dtype=torch.long)
+        rel_sentence_distances = torch.tensor(
+            rel_sentence_distances, dtype=torch.long)
     else:
         # corner case handling (no pos/neg relations)
         rel_pair_masks = torch.zeros([1, 1], dtype=torch.bool)
@@ -530,7 +560,7 @@ def collate_fn_padding(batch):
     for key in keys:
         samples = [s[key] for s in batch]
 
-        if key != 'tokens':
+        if key != 'tokens' and key != 'original_sentences' and key != 'sentences':
             if not batch[0][key].shape:
                 padded_batch[key] = torch.stack(samples)
             else:

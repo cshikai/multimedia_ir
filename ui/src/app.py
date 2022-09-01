@@ -1,7 +1,8 @@
 # importing dependencies
 import streamlit as st
+import numpy as np
 import os
-import time
+import requests
 from itertools import cycle
 from typing import List, Dict
 from PIL import Image
@@ -19,12 +20,13 @@ es = Elasticsearch(ELASTIC_URL,
 
 
 class Report:
-    def __init__(self, id, title="", body="", date="", associated_entities=[]):
+    def __init__(self, id, title="", body="", date="", associated_entities=[], images=[]):
         self.id = id
         self.title = title
         self.body = body
         self.date = date
         self.associated_entities = associated_entities
+        self.images = images
 
     def __str__(self):
         return f'{self.id}: {self.title}'
@@ -77,6 +79,21 @@ def escape_latex(text: str) -> str:
     return text.replace('$', '\$')
 
 
+def generate_hypertext(entities: List[Dict], body: str):
+    hypertext = body
+    for entity in entities:
+        hypertext = hypertext.replace(
+            entity["mention"], f"<a href='?entity={entity['id']}' target='_self'>{entity['mention']}</a>")
+    return hypertext
+
+
+def get_image(server_path: str):
+    body = {'server_path': server_path}
+    res = requests.get(
+        'http://image_server:8000/download/', json=body)
+    return res.json()['image']
+
+
 def search_reports(query: str) -> List[Report]:
     res = es.search(index="documents", query={"match": {"content": query}})
     results = []
@@ -92,13 +109,22 @@ def search_reports(query: str) -> List[Report]:
 def get_report(id: int) -> Report:
     # title = "Hamilton claims Vettel 'incomparable' to other F1 stars"
     # body = """
-    # <b>Lewis Hamilton has described <a href='?entity=2' target='_self'>Sebastian Vettel</a> as being 'unlike any driver' from F1 past or present after the German announced his retirement from the sport.</b>
+    # <b>Lewis Hamilton has described Sebastian Vettel as being 'unlike any driver' from F1 past or present after the German announced his retirement from the sport.</b>
     # <br>
     # The two drivers joined the grid full-time within half a year of one another and until recently were fierce rivals on the track. But as the distance separating the pair on the grid has grown, more common ground has been discovered with Hamilton describing the four-time champion as a 'powerful ally' in his battle against racism and social injustice. Vettel has backed numerous environmental causes this year, including wearing a shirt in Miami warning of the event would be the "first underwater grand prix" if climate change is not addressed now.  “Over time, we have started to see one another taking those brave steps and standing out for things that we believe in and have been able to support each other," said Hamilton.  "He has been so supportive to me and I like to think I have supported him also and have come to realise that we have a lot more in common than just the driving passion.  “So it is really me and him that have been stepping out into the uncomfortable light and trying to do something with the platform that we have.  “And that is for me why he is very much unlike any of the drivers that have been here past and present.” Vettel a "great all-round competitor"  Vettel finished in the top five of the drivers' championship for 11 consecutive seasons from 2009 to 2019 but has since failed to place in the top 10.  Asked how the pair's relationship has evolved over the years, Hamilton said: “The racing part of things, he was just incredibly quick.  "He was very, very intelligent, a very good engineer, I think, and just very, very precise on track.  “He was just a great all-around competitor, very fair but also very strong and firm on track.  “He has never been someone to blame other people for mistakes, he would always put his hand up and say it was his fault which I always thought was honourable.  “Naturally, when you are focused on winning championships and stuff, when we were younger, we didn’t have time to stop and talk about what we do in our own personal lives and the things that we cared about."
     # """
+
     res = es.search(index="documents", query={"term": {"ID": id}})
+    body = res['hits']['hits'][0]['_source']['content']
+    entities = [{"mention": "Sebastian Vettel", "id": 1},
+                {"mention": "Hamilton", "id": 2}]
+    hypertext = generate_hypertext(entities, body)
+    images = []
+    for server_path in res['hits']['hits'][0]['_source']['images']:
+        images.append(get_image(server_path))
+
     result = Report(id=res['hits']['hits'][0]['_source']['ID'],
-                    title=res['hits']['hits'][0]['_id'], body=res['hits']['hits'][0]['_source']['content'])
+                    title=res['hits']['hits'][0]['_id'], body=hypertext, images=images)
     return result
 
 
@@ -215,6 +241,11 @@ if st.session_state['report']:
             # NOTE: Unsafe
             st.write(
                 f"<div style='text-align: justify;'>{report.body}</div>", unsafe_allow_html=True)
+            st.markdown("""---""")
+            for image in report.images:
+                im = Image.fromarray(np.asarray(image).astype(np.uint8))
+                im.thumbnail((256, 256))
+                st.image(im)
 
     with col2:
         # For future development

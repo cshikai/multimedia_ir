@@ -294,6 +294,10 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - ../ui/img:/images
+      - ../document_population/data/images:/images
+    environment:
+      ELASTIC_USERNAME: ${ELASTIC_USERNAME}
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      ELASTICSEARCH_HOST_PORT: https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
     ports:
       - 8501:8501

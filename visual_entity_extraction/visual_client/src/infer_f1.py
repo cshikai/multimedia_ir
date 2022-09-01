@@ -7,24 +7,24 @@ import yaml
 import os
 
 from PIL import Image, ImageDraw
-from elasticsearch import ElasticSearch
+from elasticsearch import Elasticsearch
 
 
 def read_yaml(file_path='config_f1.yaml'):
     with open(file_path, "r") as f:
         return yaml.safe_load(f)
 
+
 config = read_yaml()
 
 ELASTIC_URL = config['ELASTICSEARCH']['URL']
 INDEX_NAME = config['ELASTICSEARCH']['INDEX_NAME']
 ELASTIC_USERNAME = config['ELASTICSEARCH']['ELASTIC_USERNAME']
-ELASTIC_PASSWORD = config['ELASTICSEARCH']['ELASTIC_PASSWORD']        
+ELASTIC_PASSWORD = config['ELASTICSEARCH']['ELASTIC_PASSWORD']
 
-client = Elasticsearch(ELASTIC_URL,# ca_certs="",
-                                        verify_certs=False,
-                                        basic_auth=(ELASTIC_USERNAME, ELASTIC_PASSWORD))
-
+client = Elasticsearch(ELASTIC_URL,  # ca_certs="",
+                       verify_certs=False,
+                       basic_auth=(ELASTIC_USERNAME, ELASTIC_PASSWORD))
 
 
 if __name__ == '__main__':
@@ -34,11 +34,12 @@ if __name__ == '__main__':
         detection_dict = {}
         for img_file in os.listdir(img_folder+'/'+subfolder):
             detection_dict[img_file] = {}
-            with open(img_folder+'/'+img_file, "rb") as f:
+            with open(img_folder+'/'+subfolder+'/'+img_file, "rb") as f:
                 im_bytes = f.read()
             im_b64 = base64.b64encode(im_bytes).decode("utf8")
 
-            headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+            headers = {'Content-type': 'application/json',
+                       'Accept': 'text/plain'}
             payload = json.dumps({"image": im_b64})
 
             r_fn = requests.post(
@@ -51,9 +52,12 @@ if __name__ == '__main__':
             detection_dict[img_file]['person_bbox'] = res_fn['bb']
             detection_dict[img_file]['person_id'] = res_fn['cos_id']
             detection_dict[img_file]['person_conf'] = res_fn['cos_conf']
-            detection_dict[img_file]['obj_bbox'] = [[int(element) for element in sublist[:4]]  for sublist in res_yolo['bboxes'][0]]
-            detection_dict[img_file]['obj_class'] = [int(sublist[-1])  for sublist in res_yolo['bboxes'][0]]
-            detection_dict[img_file]['obj_conf'] = [int(sublist[-2])  for sublist in res_yolo['bboxes'][0]]
+            detection_dict[img_file]['obj_bbox'] = [
+                [int(element) for element in sublist[:4]] for sublist in res_yolo['bboxes'][0]]
+            detection_dict[img_file]['obj_class'] = [
+                int(sublist[-1]) for sublist in res_yolo['bboxes'][0]]
+            detection_dict[img_file]['obj_conf'] = [
+                int(sublist[-2]) for sublist in res_yolo['bboxes'][0]]
             print(detection_dict)
 
         # Convert dict to str, so as to retain shape when uploaded to ES
@@ -61,8 +65,8 @@ if __name__ == '__main__':
         q = {
             "script": {
                 "source": "ctx._source.name=params.infer",
-                "params":{
-                    "infer":detection_dict_str
+                "params": {
+                    "infer": detection_dict_str
                 },
                 "lang": "painless"
             },
@@ -72,4 +76,5 @@ if __name__ == '__main__':
                 }
             }
         }
-        client.update_by_query(body=q, index=config['ELASTICSEARCH']['INDEX_NAME'])
+        client.update_by_query(
+            body=q, index=config['ELASTICSEARCH']['INDEX_NAME'])

@@ -195,53 +195,53 @@ if __name__ == '__main__':
     # df_json = json.loads(df_json)
     # response = requests.post('http://0.0.0.0:5050/add_entities', json = df_json)
 
-    df_json = articles_df.to_json(orient="records")
-    df_json = json.loads(df_json)
-    jerex_results = predict_jerex(df_json)
-    print("jerex results: ", jerex_results)
+    # df_json = articles_df.to_json(orient="records")
+    # df_json = json.loads(df_json)
+    # jerex_results = predict_jerex(df_json)
+    # print("jerex results: ", jerex_results)
 
-    # jerex_results = pd.read_csv('data/test_jerex.csv')
-    # jerex_infered = jerex_results[jerex_results.relations != '[]']
-    # print("relations: ")
+    # # jerex_results = pd.read_csv('data/test_jerex.csv')
+    # # jerex_infered = jerex_results[jerex_results.relations != '[]']
+    # # print("relations: ")
+    # # print(jerex_infered.info())
+
+    # jerex_infered = jerex_results[jerex_results.entities != '[]']
+    # print("entities: ")
     # print(jerex_infered.info())
 
-    jerex_infered = jerex_results[jerex_results.entities != '[]']
-    print("entities: ")
-    print(jerex_infered.info())
+    # count = 0
+    # for idx, row in jerex_infered.iterrows():
+    #     if type(row['entities']) == str:
+    #         entities = ast.literal_eval(row['entities'])
+    #     else:
+    #         entities = row['entities']
 
-    count = 0
-    for idx, row in jerex_infered.iterrows():
-        if type(row['entities']) == str:
-            entities = ast.literal_eval(row['entities'])
-        else:
-            entities = row['entities']
+    #     for entity_row in entities:
+    #         count += len(entity_row)
 
-        for entity_row in entities:
-            count += len(entity_row)
+    # print("total number of entities: ", count)
+    # print("Avg count of entities: ", count/len(jerex_infered))
 
-    print("total number of entities: ", count)
-    print("Avg count of entities: ", count/len(jerex_infered))
-
-    entity_linking_df = generate_entity_linking_df_entities(jerex_results)
-    entity_linking_df = entity_linking_df[entity_linking_df.mention_type != 'TIME']
-    entity_linking_df = entity_linking_df[entity_linking_df.mention_type != 'NUM']
-    print(entity_linking_df.info())
-
-    # entity_linking_df = pd.read_csv('data/articles_entity_linked.csv')
-    # entity_linking_df = entity_linking_df[entity_linking_df.entity_names != 'Unknown']
+    # entity_linking_df = generate_entity_linking_df_entities(jerex_results)
+    # entity_linking_df = entity_linking_df[entity_linking_df.mention_type != 'TIME']
+    # entity_linking_df = entity_linking_df[entity_linking_df.mention_type != 'NUM']
     # print(entity_linking_df.info())
 
-    print(entity_linking_df)
-    entity_linking_df.to_csv("data/entity_linking_df.csv", index=False)
-    # entity_linking_df = pd.read_csv('/home/shearman/Desktop/work/BLINK_es/data/entity_linking_df.csv')
-    # entity_linking_df =entity_linking_df.iloc[:10,:]
+    # # entity_linking_df = pd.read_csv('data/articles_entity_linked.csv')
+    # # entity_linking_df = entity_linking_df[entity_linking_df.entity_names != 'Unknown']
+    # # print(entity_linking_df.info())
 
-    df_json = entity_linking_df.to_json(orient="records")
-    df_json = json.loads(df_json)
+    # print(entity_linking_df)
+    # entity_linking_df.to_csv("data/entity_linking_df.csv", index=False)
+    # # entity_linking_df = pd.read_csv('/home/shearman/Desktop/work/BLINK_es/data/entity_linking_df.csv')
+    # # entity_linking_df =entity_linking_df.iloc[:10,:]
 
-    blink_results = predict_blink(df_json)
+    # df_json = entity_linking_df.to_json(orient="records")
+    # df_json = json.loads(df_json)
 
-    # blink_results = pd.read_csv('data/articles_entity_linked.csv')
+    # blink_results = predict_blink(df_json)
+
+    blink_results = pd.read_csv('data/articles_entity_linked.csv')
     blink_results = blink_results[blink_results['mention'].notna()]
 
     list_of_cluster_dfs = blink_results.groupby('doc_id')
@@ -253,7 +253,10 @@ if __name__ == '__main__':
         doc_entities = []
         doc_id = cluster_df['doc_id'].tolist()[0]
         mentions = cluster_df['mention'].tolist()
+        # cluster_df['char_spans'] = cluster_df['char_spans'].apply(
+        #     lambda list_string: ast.literal_eval(list_string))
         mention_spans = cluster_df['char_spans'].tolist()
+        mention_spans = [tuple(span) for span in mention_spans]
         mentions_type = cluster_df['mention_type'].tolist()
         entity_links = cluster_df['entity_link'].tolist()
         entity_names = cluster_df['entity_names'].tolist()
@@ -272,6 +275,8 @@ if __name__ == '__main__':
     entities_df = pd.DataFrame()
     entities_df['ID'] = ids
     entities_df['identified_entities'] = entities
+
+    print(entities_df.head())
 
     results_df = pd.merge(articles_df, entities_df, on=["ID"])
 

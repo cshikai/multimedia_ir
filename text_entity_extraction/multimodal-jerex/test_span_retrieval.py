@@ -56,11 +56,11 @@ if __name__ == '__main__':
     documents = document_store.get_all_documents()
 
     articles_df = pd.DataFrame(
-        columns=['ID', 'title', 'text', 'elasticsearch_ID'])
+        columns=['ID', 'title', 'text', 'elasticsearch_ID', 'text_entities'])
 
     for document in documents:
         articles_df.loc[-1] = [document.meta['ID'], document.meta['link'],
-                               document.content, document.id]  # adding a row
+                               document.content, document.id, document.meta['text_entities']]  # adding a row
         articles_df.index = articles_df.index + 1  # shifting index
         articles_df = articles_df.sort_index()  # sorting by index
 

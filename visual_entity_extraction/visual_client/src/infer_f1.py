@@ -41,20 +41,14 @@ if __name__ == '__main__':
                        'Accept': 'text/plain'}
             payload = json.dumps({"image": im_b64})
 
-            try:
-                r_fn = requests.post(
-                    '{}/infer'.format(config['endpt']['fn_endpt']), data=payload, headers=headers)
-                res_fn = json.loads(r_fn.text)
-            except:
-                print("Facenet Failed for {}".format(img_folder+'/'+subfolder+'/'+img_file))
-                continue
-            try:
-                r_yolo = requests.post(
-                    '{}/infer'.format(config['endpt']['yolo_endpt']), data=payload, headers=headers)
-                res_yolo = json.loads(r_yolo.text)
-            except:
-                print("YOLO Failed for {}".format(img_folder+'/'+subfolder+'/'+img_file))
-                continue
+            r_fn = requests.post(
+                '{}/infer'.format(config['endpt']['fn_endpt']), data=payload, headers=headers)
+            res_fn = json.loads(r_fn.text)
+
+            r_yolo = requests.post(
+                '{}/infer'.format(config['endpt']['yolo_endpt']), data=payload, headers=headers)
+            res_yolo = json.loads(r_yolo.text)
+
 
             detection_dict[img_file]['person_bbox'] = res_fn['bb']
             detection_dict[img_file]['person_id'] = res_fn['cos_id']

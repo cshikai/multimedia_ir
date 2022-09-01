@@ -1,4 +1,3 @@
-
 import base64
 import json
 from chardet import detect
@@ -52,13 +51,10 @@ if __name__ == '__main__':
             detection_dict[img_file]['person_bbox'] = res_fn['bb']
             detection_dict[img_file]['person_id'] = res_fn['cos_id']
             detection_dict[img_file]['person_conf'] = res_fn['cos_conf']
-            detection_dict[img_file]['obj_bbox'] = [
-                [int(element) for element in sublist[:4]] for sublist in res_yolo['bboxes'][0]]
-            detection_dict[img_file]['obj_class'] = [
-                int(sublist[-1]) for sublist in res_yolo['bboxes'][0]]
-            detection_dict[img_file]['obj_conf'] = [
-                int(sublist[-2]) for sublist in res_yolo['bboxes'][0]]
-            print(detection_dict)
+
+            detection_dict[img_file]['obj_bbox'] = res_yolo['bbox']
+            detection_dict[img_file]['obj_class'] = res_yolo['classes']
+            detection_dict[img_file]['obj_conf'] = res_yolo['conf']
 
         # Convert dict to str, so as to retain shape when uploaded to ES
         detection_dict_str = json.dumps(detection_dict)

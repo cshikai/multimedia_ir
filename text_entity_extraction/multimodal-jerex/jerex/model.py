@@ -218,6 +218,12 @@ class JEREXModel(pl.LightningModule):
     def _inference_on_csv(self, batch, batch_index):
         """ Converts prediction results of an epoch and stores the predictions on disk for later evaluation"""
 
+        def delete_multiple_element(list_object, indices):
+            indices = sorted(indices, reverse=True)
+            for idx in indices:
+                if idx < len(list_object):
+                    list_object.pop(idx)
+
         output = self(**batch, inference=True)
 
         # evaluate batch
@@ -254,9 +260,10 @@ class JEREXModel(pl.LightningModule):
 
                 mention_spans = [list(span) for span in mention]
 
-                span_width = [span[1]-span[0] for span in mention_spans]
-
                 char_spans = []
+
+                mention_count = 0
+                empty_mention = []
 
                 for mention in mention_spans:
                     span_start = mention[0]
@@ -291,6 +298,13 @@ class JEREXModel(pl.LightningModule):
 
                     print("span indexes: ",
                           (original_sent_idx, char_start, char_end))
+
+                    if char_end - char_start <= 0:
+                        empty_mention.append(mention_count)
+                    mention_count += 1
+
+                delete_multiple_element(mention_spans, empty_mention)
+                delete_multiple_element(char_spans, empty_mention)
 
                 entities_output.append(
                     {

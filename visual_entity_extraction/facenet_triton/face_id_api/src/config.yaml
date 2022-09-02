@@ -7,6 +7,7 @@ MTCNN:
 triton:
   URL: 'triton:8000'
   model_name: 'facenet'
+  batch_size: 16 #TO CORRESPOND TO TRITON's `config.pbtxt`
 
 ELASTICSEARCH:
   URL: 'https://elasticsearch:9200'

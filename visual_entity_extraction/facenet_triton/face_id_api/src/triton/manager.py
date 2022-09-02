@@ -9,6 +9,7 @@ def read_yaml(file_path='config.yaml'):
 config = read_yaml()
 URL = config['triton']['URL']
 MODEL_NAME = config['triton']['model_name']
+BATCH_SZ = config['triton']['batch_size']
 
 class TritonManager():
 
@@ -34,21 +35,27 @@ class TritonManager():
         """
         img = np.array(img, dtype='float32')
 
-        inputs = []
-        outputs = []
-
-        inputs.append(
-            httpclient.InferInput(name="INPUT__0", shape=img.shape, datatype="FP32")
-        )
-        inputs[0].set_data_from_numpy(img, binary_data=False)
+        result_list = []
         
-        outputs.append(httpclient.InferRequestedOutput(name="OUTPUT__0"))
+        batches = int((len(img)-1)/BATCH_SZ)+1 # Min. of N is always 1, zero case handled by caller
+        for batch in range(batches):
+            inputs = []
+            outputs = []
+            data_batch = img[batch*BATCH_SZ:(batch+1)*BATCH_SZ]
+            inputs.append(
+                httpclient.InferInput(name="INPUT__0", shape=data_batch.shape, datatype="FP32")
+            )
+            inputs[0].set_data_from_numpy(data_batch, binary_data=False)
+            
+            outputs.append(httpclient.InferRequestedOutput(name="OUTPUT__0"))
 
-        result = self.triton_client.infer(
-            model_name=MODEL_NAME, 
-            inputs=inputs, 
-            outputs=outputs
-        )
+            result = self.triton_client.infer(
+                model_name=MODEL_NAME, 
+                inputs=inputs, 
+                outputs=outputs
+            )
+            result = result.as_numpy("OUTPUT__0")
+            result_list.append(result)
 
-        result = result.as_numpy("OUTPUT__0")
-        return result
+        merged_result = np.concatenate(result_list,axis=0)
+        return merged_result

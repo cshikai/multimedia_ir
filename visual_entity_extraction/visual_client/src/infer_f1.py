@@ -1,6 +1,5 @@
 import base64
 import json
-from chardet import detect
 import requests
 import yaml
 import os
@@ -30,6 +29,7 @@ if __name__ == '__main__':
 
     img_folder = config['infer']['img_folder']
     for subfolder in os.listdir(img_folder):
+        print(subfolder)
         detection_dict = {}
         for img_file in os.listdir(img_folder+'/'+subfolder):
             file_index = img_file.split('_')[1].split('.')[0]

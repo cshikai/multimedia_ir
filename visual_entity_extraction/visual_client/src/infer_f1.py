@@ -32,7 +32,9 @@ if __name__ == '__main__':
     for subfolder in os.listdir(img_folder):
         detection_dict = {}
         for img_file in os.listdir(img_folder+'/'+subfolder):
-            detection_dict[img_file] = {}
+            file_index = img_file.split('_')[1].split('.')[0]
+            file_key = '/images/f1/{}/{}.h5'.format(subfolder, file_index)
+            detection_dict[file_key] = {}
             with open(img_folder+'/'+subfolder+'/'+img_file, "rb") as f:
                 im_bytes = f.read()
             im_b64 = base64.b64encode(im_bytes).decode("utf8")
@@ -49,13 +51,13 @@ if __name__ == '__main__':
                 '{}/infer'.format(config['endpt']['yolo_endpt']), data=payload, headers=headers)
             res_yolo = json.loads(r_yolo.text)
 
-            detection_dict[img_file]['person_bbox'] = res_fn['bb']
-            detection_dict[img_file]['person_id'] = res_fn['cos_id']
-            detection_dict[img_file]['person_conf'] = res_fn['cos_conf']
+            detection_dict[file_key]['person_bbox'] = res_fn['bb']
+            detection_dict[file_key]['person_id'] = res_fn['cos_id']
+            detection_dict[file_key]['person_conf'] = res_fn['cos_conf']
 
-            detection_dict[img_file]['obj_bbox'] = res_yolo['bbox']
-            detection_dict[img_file]['obj_class'] = res_yolo['classes']
-            detection_dict[img_file]['obj_conf'] = res_yolo['conf']
+            detection_dict[file_key]['obj_bbox'] = res_yolo['bbox']
+            detection_dict[file_key]['obj_class'] = res_yolo['classes']
+            detection_dict[file_key]['obj_conf'] = res_yolo['conf']
 
         # Convert dict to str, so as to retain shape when uploaded to ES
         detection_dict_str = json.dumps(detection_dict)

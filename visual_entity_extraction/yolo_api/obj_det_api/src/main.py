@@ -13,7 +13,7 @@ def read_yaml(file_path='config.yaml'):
 
 
 config = read_yaml()
-
+coco_classes = config['names']
 yolo = YOLOManager()
 
 
@@ -43,11 +43,19 @@ def infer(img_data: Image):
         obj_bboxes = [[int(element) for element in sublist[:4]]
                       for sublist in pred_list[0]]
         obj_classes = [int(sublist[-1]) for sublist in pred_list[0]]
-        obj_conf = [int(sublist[-2]) for sublist in pred_list[0]]
-    ret_dict = {
-        "bbox": obj_bboxes,
-        "classes": obj_classes,
-        "conf": obj_conf,
-        "embs": emb_list
-    }
+        obj_conf = [sublist[-2] for sublist in pred_list[0]]
+    if config['resolve_class']:
+        ret_dict = {
+            "bbox": obj_bboxes,
+            "classes": [coco_classes[i] for i in obj_classes],
+            "conf": obj_conf,
+            "embs": emb_list
+        }
+    else:
+        ret_dict = {
+            "bbox": obj_bboxes,
+            "classes": obj_classes,
+            "conf": obj_conf,
+            "embs": emb_list
+        }
     return ret_dict

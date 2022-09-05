@@ -1,0 +1,7 @@
+geo_file: '../data/allCountries.txt'
+
+ELASTICSEARCH:
+  URL: 'https://elasticsearch:9200'
+  INDEX_NAME: 'geonames'
+  ELASTIC_USERNAME: elastic
+  ELASTIC_PASSWORD: changeme

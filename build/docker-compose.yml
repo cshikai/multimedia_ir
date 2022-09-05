@@ -74,6 +74,17 @@ services:
     # networks:
     #     - backend    
 
+  geo-client:
+    build: ../geo_data
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../geo_data/src:/src
+      - ../geo_data/data:/data
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb # set upper limit for how much shared memory container can use
+
   visual-client:
     build: ../visual_entity_extraction/visual_client
     stdin_open: true

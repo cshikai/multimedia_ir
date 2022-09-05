@@ -21,7 +21,7 @@ es = Elasticsearch(ELASTIC_URL,
 
 
 class Report:
-    def __init__(self, id, title="", body="", date="", associated_entities=[], images=[], visual_entities=""):
+    def __init__(self, id, title="", body="", date="", associated_entities=[], images={}, visual_entities=""):
         self.id = id
         self.title = title
         self.body = body
@@ -109,6 +109,7 @@ def search_reports(query: str) -> List[Report]:
     return results
 
 
+@st.experimental_memo(show_spinner=False)
 def get_report(id: int) -> Report:
     # title = "Hamilton claims Vettel 'incomparable' to other F1 stars"
     # body = """
@@ -120,9 +121,9 @@ def get_report(id: int) -> Report:
     body = res['hits']['hits'][0]['_source']['content']
     text_entities = res['hits']['hits'][0]['_source']['text_entities']
     hypertext = generate_hypertext(text_entities, body)
-    images = []
+    images = {}
     for server_path in res['hits']['hits'][0]['_source']['images']:
-        images.append(get_image(server_path))
+        images[server_path] = get_image(server_path)
     visual_entities = json.loads(
         res['hits']['hits'][0]['_source']['visual_entities'] if images else "{}")
     print(visual_entities)
@@ -249,19 +250,23 @@ if st.session_state['report']:
                 f"<div style='text-align: justify;'>{report.body}</div>", unsafe_allow_html=True)
             st.markdown("""---""")
 
-            for image in report.images:
+            for server_path, image in report.images.items():
                 im = Image.fromarray(np.asarray(image).astype(np.uint8))
-                for idx, bbox in enumerate(report.visual_entities['78_0.jpg']['person_bbox']):
+                for person_id in set(report.visual_entities[server_path]['person_id']):
                     st.checkbox(
-                        label=report.visual_entities['78_0.jpg']['person_id'][idx], key=f"78_0_{report.visual_entities['78_0.jpg']['person_id'][idx]}")
+                        label=person_id, key=f"{server_path}_{person_id}", value=True)
+                for idx, bbox in enumerate(report.visual_entities[server_path]['person_bbox']):
                     draw = ImageDraw.Draw(im)
-                    draw.rectangle(
-                        bbox)
-                    # Top left corner
-                    draw.text((bbox[0], bbox[1]),
-                              f"ID: {report.visual_entities['78_0.jpg']['person_id'][idx]}, Conf: {report.visual_entities['78_0.jpg']['person_conf'][idx]}")
+                    if st.session_state[f"{server_path}_{report.visual_entities[server_path]['person_id'][idx]}"]:
+                        draw.rectangle(
+                            bbox)
+                        # Top left corner
+                        draw.text((bbox[0], bbox[1]),
+                                  f"ID: {report.visual_entities[server_path]['person_id'][idx]}, Conf: {report.visual_entities[server_path]['person_conf'][idx]}")
+
                 # im.thumbnail((256, 256))
                 st.image(im)
+                st.markdown("***")  # Line Break
 
     with col2:
         # For future development

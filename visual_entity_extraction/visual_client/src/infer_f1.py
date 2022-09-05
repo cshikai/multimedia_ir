@@ -49,7 +49,6 @@ if __name__ == '__main__':
                 '{}/infer'.format(config['endpt']['yolo_endpt']), data=payload, headers=headers)
             res_yolo = json.loads(r_yolo.text)
 
-
             detection_dict[img_file]['person_bbox'] = res_fn['bb']
             detection_dict[img_file]['person_id'] = res_fn['cos_id']
             detection_dict[img_file]['person_conf'] = res_fn['cos_conf']
@@ -62,7 +61,7 @@ if __name__ == '__main__':
         detection_dict_str = json.dumps(detection_dict)
         q = {
             "script": {
-                "source": "ctx._source.name=params.infer",
+                "source": "ctx._source.visual_entities=params.infer",
                 "params": {
                     "infer": detection_dict_str
                 },

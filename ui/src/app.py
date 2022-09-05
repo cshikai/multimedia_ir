@@ -5,7 +5,8 @@ import os
 import requests
 from itertools import cycle
 from typing import List, Dict
-from PIL import Image
+from PIL import Image, ImageDraw
+import json
 from elasticsearch import Elasticsearch
 
 
@@ -20,13 +21,14 @@ es = Elasticsearch(ELASTIC_URL,
 
 
 class Report:
-    def __init__(self, id, title="", body="", date="", associated_entities=[], images=[]):
+    def __init__(self, id, title="", body="", date="", associated_entities=[], images=[], visual_entities=""):
         self.id = id
         self.title = title
         self.body = body
         self.date = date
         self.associated_entities = associated_entities
         self.images = images
+        self.visual_entities = visual_entities
 
     def __str__(self):
         return f'{self.id}: {self.title}'
@@ -82,8 +84,9 @@ def escape_latex(text: str) -> str:
 def generate_hypertext(text_entities: List[Dict], body: str):
     hypertext = body
     for entity in text_entities:
-        hypertext = hypertext.replace(
-            entity["mention"], f"<a href='?entity={entity['entity_link']}' target='_self'>{entity['mention']}</a>")
+        if entity["mention"] != " " and entity['entity_link'] != "Unknown":
+            hypertext = hypertext.replace(
+                entity["mention"], f"<a href='?entity={entity['entity_link']}' target='_self'>{entity['mention']}</a>")
     return hypertext
 
 
@@ -120,9 +123,11 @@ def get_report(id: int) -> Report:
     images = []
     for server_path in res['hits']['hits'][0]['_source']['images']:
         images.append(get_image(server_path))
-
+    visual_entities = json.loads(
+        res['hits']['hits'][0]['_source']['visual_entities'] if images else "{}")
+    print(visual_entities)
     result = Report(id=res['hits']['hits'][0]['_source']['ID'],
-                    title=res['hits']['hits'][0]['_id'], body=hypertext, images=images)
+                    title=res['hits']['hits'][0]['_id'], body=hypertext, images=images, visual_entities=visual_entities)
     return result
 
 
@@ -203,6 +208,7 @@ if st.session_state['entity']:
             st.header(f"**Entity: {entity.title}**")
             st.write(
                 f"<div style='text-align: justify;'>{entity.body}</div>", unsafe_allow_html=True)
+            st.markdown("""---""")
             st.markdown(
                 f"**Last Spotted**: {entity.details['Last Spotted'] if 'Last Spotted' in entity.details else ''}")
             st.markdown(
@@ -242,9 +248,19 @@ if st.session_state['report']:
             st.write(
                 f"<div style='text-align: justify;'>{report.body}</div>", unsafe_allow_html=True)
             st.markdown("""---""")
+
             for image in report.images:
                 im = Image.fromarray(np.asarray(image).astype(np.uint8))
-                im.thumbnail((256, 256))
+                for idx, bbox in enumerate(report.visual_entities['78_0.jpg']['person_bbox']):
+                    st.checkbox(
+                        label=report.visual_entities['78_0.jpg']['person_id'][idx], key=f"78_0_{report.visual_entities['78_0.jpg']['person_id'][idx]}")
+                    draw = ImageDraw.Draw(im)
+                    draw.rectangle(
+                        bbox)
+                    # Top left corner
+                    draw.text((bbox[0], bbox[1]),
+                              f"ID: {report.visual_entities['78_0.jpg']['person_id'][idx]}, Conf: {report.visual_entities['78_0.jpg']['person_conf'][idx]}")
+                # im.thumbnail((256, 256))
                 st.image(im)
 
     with col2:

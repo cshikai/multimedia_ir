@@ -2,3 +2,5 @@ numpy
 pandas
 streamlit==1.11.0
 elasticsearch
+folium
+branca==0.3.1

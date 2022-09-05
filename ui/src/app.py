@@ -9,6 +9,10 @@ from PIL import Image, ImageDraw
 import json
 from elasticsearch import Elasticsearch
 
+import folium
+from folium import Marker
+from folium.plugins import MarkerCluster
+
 
 ELASTIC_URL = os.environ['ELASTICSEARCH_HOST_PORT']
 ELASTIC_USERNAME = os.environ['ELASTIC_USERNAME']
@@ -199,7 +203,7 @@ if st.session_state['search']:
                 st.subheader(
                     f"<a href='?entity={entity.id}' target='_self'>{entity.title}</a>", anchor="")
 
-if st.session_state['entity']:
+elif st.session_state['entity']:
     entity_id = st.session_state['entity']
     with st.spinner(text=f"Loading Report {entity_id}"):
         entity: Entity = get_entity(entity_id)
@@ -237,7 +241,7 @@ if st.session_state['entity']:
                     f"<a href='?report={report.id}' target='_self'>{report.title}</a>", anchor="")
                 st.write(report.date)
 
-if st.session_state['report']:
+elif st.session_state['report']:
     report_id = st.session_state['report']
     with st.spinner(text=f"Loading Report {report_id}"):
         report: Report = get_report(report_id)
@@ -271,3 +275,35 @@ if st.session_state['report']:
     with col2:
         # For future development
         pass
+
+else:
+    def display_map(point):
+        m = folium.Map([0, 0], tiles='OpenStreetMap', zoom_start=3)
+
+        # Add marker for Location
+        folium.Marker(location=[26.0368, 50.5107],
+                      popup="""
+                      <b>EVENT:</b> <br> <i> ROUND 1 </i> <br><hr>
+                      <b>WINNER:</b> <br> <i> Lewis Hamilton </i> <br><hr>
+                      18-20 March
+                    """,
+                      icon=folium.Icon()).add_to(m)
+        folium.Marker(location=[21.6370, 39.1030],
+                      popup="""
+                      <b>EVENT:</b> <br> <i> ROUND 2 </i> <br><hr>
+                      <b>WINNER:</b> <br> <i> Max Verstappen </i> <br><hr>
+                      25-27 March
+                    """,
+                      icon=folium.Icon()).add_to(m)
+        folium.Marker(location=[-37.8501, 144.9690],
+                      popup="""
+                      <b>EVENT:</b> <br> <i> ROUND 3 </i> <br><hr>
+                      <b>WINNER:</b> <br> <i> Charles Leclerc </i> <br><hr>
+                      08-10 April
+                    """,
+                      icon=folium.Icon()).add_to(m)
+
+        return st.markdown(m._repr_html_(), unsafe_allow_html=True)
+
+    with col1:
+        display_map([45.372, -121.6972])

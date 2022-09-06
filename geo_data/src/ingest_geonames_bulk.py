@@ -1,4 +1,5 @@
-from elasticsearch import Elasticsearch, RequestError
+from elasticsearch import Elasticsearch, RequestError, helpers
+
 import pandas as pd
 import yaml
 from tqdm import tqdm
@@ -48,8 +49,23 @@ if __name__ == '__main__':
     # Check if indices is create, if yes throw exception
     es_create_index_if_not_exists(client, INDEX_NAME)
 
+    actions = []
+    count = 0
     for i, rows in tqdm(df.iterrows(), total=len(df)):
+        if count == 500:
+            count = 0
+            helpers.bulk(client, actions)
+            actions = []
+
         loc_dict = rows.dropna().to_dict()
         geo_id = loc_dict['geonameid']
         loc_dict.pop('geonameid', None)
-        client.index(index=INDEX_NAME, document=loc_dict, id=str(geo_id))
+        source_dict = {}
+        source_dict['_op_type'] = 'index'
+        source_dict['_index'] = INDEX_NAME
+        source_dict['_id'] = str(geo_id)
+        source_dict['_source'] = loc_dict
+        actions.append(source_dict)
+        count += 1
+    # Upload remaining actions
+    helpers.bulk(client, actions)

@@ -51,12 +51,18 @@ if __name__ == '__main__':
                 '{}/infer'.format(config['endpt']['yolo_endpt']), data=payload, headers=headers)
             res_yolo = json.loads(r_yolo.text)
 
+            # Facenet Inference
+            mask = [True if a > 0.5 else False for a in res_fn['cos_conf']]
+            id_list = [a if mask[res_fn['cos_id'].index(a)] else -1 for a in res_fn['cos_id']]
             detection_dict[file_key]['person_bbox'] = res_fn['bb']
-            detection_dict[file_key]['person_id'] = res_fn['cos_id']
+            detection_dict[file_key]['person_id'] = id_list
             detection_dict[file_key]['person_conf'] = res_fn['cos_conf']
 
+            # YOLO Inference
+            mask = [True if a > 0.5 else False for a in res_yolo['conf']]
+            obj_list = [a if mask[res_yolo['classes'].index(a)] else 'Unknown' for a in res_yolo['classes']]
             detection_dict[file_key]['obj_bbox'] = res_yolo['bbox']
-            detection_dict[file_key]['obj_class'] = res_yolo['classes']
+            detection_dict[file_key]['obj_class'] = obj_list
             detection_dict[file_key]['obj_conf'] = res_yolo['conf']
 
         # Convert dict to str, so as to retain shape when uploaded to ES

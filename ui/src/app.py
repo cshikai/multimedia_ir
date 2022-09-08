@@ -13,6 +13,7 @@ from elasticsearch import Elasticsearch
 import folium
 from folium import Marker
 from folium.plugins import MarkerCluster
+import datetime
 
 
 ELASTIC_URL = os.environ['ELASTICSEARCH_HOST_PORT']
@@ -26,7 +27,7 @@ es = Elasticsearch(ELASTIC_URL,
 
 
 class Report:
-    def __init__(self, id, title="", body="", date="", associated_entities=[], images={}, visual_entities="", geo_data=[]):
+    def __init__(self, id, title="", body="", date="", associated_entities=[], images={}, visual_entities="", geo_data=[], timestamp=""):
         self.id = id
         self.title = title
         self.body = body
@@ -35,6 +36,7 @@ class Report:
         self.images = images
         self.visual_entities = visual_entities
         self.geo_data = geo_data
+        self.timestamp = timestamp
 
     def __str__(self):
         return f'{self.id}: {self.title}'
@@ -106,21 +108,29 @@ def get_image(server_path: str):
     return res.json()['image']
 
 
-def search_reports(query: str) -> List[Report]:
-    res = es.search(index="documents", query={
-                    "match": {"content": query}}, size=20)
+def search_reports(query: str, start_date=None, end_date=None) -> List[Report]:
+    es_query = {"bool": {
+        "filter": {"match_all": {}},
+        "must": [{"match": {"content": query}}]}
+    }
+    if start_date or end_date:
+        es_query["bool"]["filter"] = {
+            "range": {"timestamp": {"gte": start_date, "lte": end_date}}}
+    res = es.search(index="documents", query=es_query, size=20)
     results = []
     for doc in res['hits']['hits']:
         id = doc['_source']['ID']
         title = doc['_id']
         body = doc['_source']['content']
         geo_data = doc['_source']['geo_data']
-        result = Report(id=id, title=title, body=body, geo_data=geo_data)
+        timestamp = doc['_source']['timestamp']
+        result = Report(id=id, title=title, body=body,
+                        geo_data=geo_data, timestamp=timestamp)
         results.append(result)
     return results
 
 
-@st.experimental_memo(show_spinner=False)
+@ st.experimental_memo(show_spinner=False)
 def get_report(id: int) -> Report:
     # title = "Hamilton claims Vettel 'incomparable' to other F1 stars"
     # body = """
@@ -187,29 +197,68 @@ elif inp != query_params.get('search', [''])[0]:
     query_params["search"] = inp
     st.experimental_set_query_params(**query_params)
 
-
-col1, col2 = st.columns([8, 2])
-
 # TODO: Navigate using states instead of href to preserve (reports) cache and prevent reloading (+ requerying) when back button is used.
 if st.session_state['search']:
-    with col1:
-        if reports:
-            st.header("Reports")
-            st.success(f"We found {len(reports)} matches")
-            for doc in reports:
-                st.subheader(
-                    f"<a href='?report={doc.id}' target='_self'>{doc.title}</a>", anchor="")
-                st.write(escape_latex(doc.body))
+    reports_tab, maps_tab = st.tabs(["📄 Reports", "📍 Maps"])
 
-    with col2:
-        if entities:
-            st.header("Entity Results")
-            st.success(f"We found {len(entities)} matches")
-            for entity in entities:
-                st.subheader(
-                    f"<a href='?entity={entity.id}' target='_self'>{entity.title}</a>", anchor="")
+    with reports_tab:
+        col1, col2 = st.columns([8, 2])
+        with col1:
+            if reports:
+                st.header("Reports")
+                st.success(f"We found {len(reports)} matches")
+                for doc in reports:
+                    st.subheader(
+                        f"<a href='?report={doc.id}' target='_self'>{doc.title}</a>", anchor="")
+                    st.write(escape_latex(doc.body))
+
+        with col2:
+            if entities:
+                st.header("Entity Results")
+                st.success(f"We found {len(entities)} matches")
+                for entity in entities:
+                    st.subheader(
+                        f"<a href='?entity={entity.id}' target='_self'>{entity.title}</a>", anchor="")
+
+    with maps_tab:
+        def display_map(markers):
+            m = folium.Map([0, 0], tiles='OpenStreetMap', zoom_start=3)
+
+            # Add marker for Location
+            for geo_data in markers.keys():
+                folium.Marker(location=[geo_data[1], geo_data[2]],
+                              popup=folium.Popup(f"""
+                            <b>{geo_data[0]}</b>
+                            <br><br>
+                            {'<br>'.join(markers[geo_data])}<br>
+                            """, min_width=180, max_width=180),
+                              icon=folium.Icon()).add_to(m)
+
+            return st.markdown(m._repr_html_(), unsafe_allow_html=True)
+
+        def generate_markers(reports):
+            markers = defaultdict(list)
+            # Sort reports by descending timestamp
+            sorted_reports = sorted(
+                reports, key=lambda report: report.timestamp, reverse=True)
+            for report in sorted_reports:
+                for geo in report.geo_data:
+                    markers[(geo["entity_name"], geo["latitude"],
+                            geo["longitude"])].append(f"{report.timestamp}: <b>{report.id}</b>")
+            return markers
+
+        start_date = st.date_input(
+            "Start Date", max_value=datetime.date.today(), value=datetime.date(1970, 1, 1))
+        end_date = st.date_input(
+            "End Date", max_value=datetime.date.today())
+        reports: List[Report] = search_reports(
+            inp, start_date=start_date, end_date=end_date)
+        markers = generate_markers(reports)
+        display_map(markers)
 
 elif st.session_state['entity']:
+    col1, col2 = st.columns([8, 2])
+
     entity_id = st.session_state['entity']
     with st.spinner(text=f"Loading Report {entity_id}"):
         entity: Entity = get_entity(entity_id)
@@ -248,6 +297,8 @@ elif st.session_state['entity']:
                 st.write(report.date)
 
 elif st.session_state['report']:
+    col1, col2 = st.columns([8, 2])
+
     report_id = st.session_state['report']
     with st.spinner(text=f"Loading Report {report_id}"):
         report: Report = get_report(report_id)
@@ -283,26 +334,4 @@ elif st.session_state['report']:
         pass
 
 else:
-    def display_map(markers):
-        m = folium.Map([0, 0], tiles='OpenStreetMap', zoom_start=3)
-
-        # Add marker for Location
-        for geo_data in markers.keys():
-            folium.Marker(location=[geo_data[1], geo_data[2]],
-                          popup=f"""
-                        <b>ENTITY:</b> <br> <i> {geo_data[0]} </i> <br><hr>
-                        <b>REPORTS:</b> <br> <i> {markers[geo_data]} </i> <br><hr>
-                        18-20 March
-                        """,
-                          icon=folium.Icon()).add_to(m)
-
-        return st.markdown(m._repr_html_(), unsafe_allow_html=True)
-
-    with col1, st.spinner(text=f'Searching: Grand Prix'):
-        reports: List[Report] = search_reports('Grand Prix')
-        markers = defaultdict(list)
-        for doc in reports:
-            for geo in doc.geo_data:
-                markers[(geo["entity_name"], geo["latitude"],
-                         geo["longitude"])].append(doc.id)
-        display_map(markers)
+    pass

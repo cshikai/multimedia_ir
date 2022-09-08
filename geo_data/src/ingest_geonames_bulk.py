@@ -57,7 +57,8 @@ if __name__ == '__main__':
             actions = []
 
         loc_dict = rows.dropna().to_dict()
-        loc_dict['feature_class_num'] = feature_map.index(loc_dict['feature_class'])+1 #Ensure value is non-zero
+        if 'feature_class' in loc_dict:
+            loc_dict['feature_class_num'] = feature_map.index(loc_dict['feature_class'])+1 #Ensure value is non-zero
         geo_id = loc_dict['geonameid']
         loc_dict.pop('geonameid', None)
         source_dict = {}

@@ -22,8 +22,8 @@ client = Elasticsearch(ELASTIC_URL,  # ca_certs="",
 def get_location(loc_name):
     geo_query = {"multi_match": {
         "query": loc_name,
-        # Emphasis on original name over alternate name; score boosting
-        "fields": ['asciiname^3', 'alternatenames']
+        # Emphasis on preferred name > original name > alternate name; score boosting
+        "fields": ["asciiname^2", "alternatenames", "preferrednames^2.5"]
         # "fuzziness": 'AUTO'
     }
     }
@@ -33,6 +33,7 @@ def get_location(loc_name):
 
 count = 0
 if __name__ == "__main__":
+    # Size 1000 because got only 700+ documents
     resp = client.search(index=INDEX_NAME, query={"match_all": {}}, size=1000)
     print("Got %d Hits:" % resp['hits']['total']['value'])
     for hit in resp['hits']['hits']:
@@ -60,7 +61,6 @@ if __name__ == "__main__":
                                  'latitude': latitude,
                                  'longitude': longitude
                                  })
-        print(hit['_id'])
         q = {
             "script": {
                 "source": "ctx._source.geo_data=params.data",

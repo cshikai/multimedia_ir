@@ -1,4 +1,5 @@
 geo_file: '../data/allCountries.txt'
+alt_names: '../data/alternateNames.txt'
 
 ELASTICSEARCH:
   URL: 'https://elasticsearch:9200'

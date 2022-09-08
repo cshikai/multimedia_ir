@@ -7,6 +7,7 @@ from itertools import cycle
 from typing import List, Dict
 from PIL import Image, ImageDraw
 import json
+from collections import defaultdict
 from elasticsearch import Elasticsearch
 
 import folium
@@ -25,7 +26,7 @@ es = Elasticsearch(ELASTIC_URL,
 
 
 class Report:
-    def __init__(self, id, title="", body="", date="", associated_entities=[], images={}, visual_entities=""):
+    def __init__(self, id, title="", body="", date="", associated_entities=[], images={}, visual_entities="", geo_data=[]):
         self.id = id
         self.title = title
         self.body = body
@@ -33,6 +34,7 @@ class Report:
         self.associated_entities = associated_entities
         self.images = images
         self.visual_entities = visual_entities
+        self.geo_data = geo_data
 
     def __str__(self):
         return f'{self.id}: {self.title}'
@@ -102,13 +104,15 @@ def get_image(server_path: str):
 
 
 def search_reports(query: str) -> List[Report]:
-    res = es.search(index="documents", query={"match": {"content": query}})
+    res = es.search(index="documents", query={
+                    "match": {"content": query}}, size=20)
     results = []
     for doc in res['hits']['hits']:
         id = doc['_source']['ID']
         title = doc['_id']
         body = doc['_source']['content']
-        result = Report(id=id, title=title, body=body)
+        geo_data = doc['_source']['geo_data']
+        result = Report(id=id, title=title, body=body, geo_data=geo_data)
         results.append(result)
     return results
 
@@ -277,33 +281,26 @@ elif st.session_state['report']:
         pass
 
 else:
-    def display_map(point):
+    def display_map(markers):
         m = folium.Map([0, 0], tiles='OpenStreetMap', zoom_start=3)
 
         # Add marker for Location
-        folium.Marker(location=[26.0368, 50.5107],
-                      popup="""
-                      <b>EVENT:</b> <br> <i> ROUND 1 </i> <br><hr>
-                      <b>WINNER:</b> <br> <i> Lewis Hamilton </i> <br><hr>
-                      18-20 March
-                    """,
-                      icon=folium.Icon()).add_to(m)
-        folium.Marker(location=[21.6370, 39.1030],
-                      popup="""
-                      <b>EVENT:</b> <br> <i> ROUND 2 </i> <br><hr>
-                      <b>WINNER:</b> <br> <i> Max Verstappen </i> <br><hr>
-                      25-27 March
-                    """,
-                      icon=folium.Icon()).add_to(m)
-        folium.Marker(location=[-37.8501, 144.9690],
-                      popup="""
-                      <b>EVENT:</b> <br> <i> ROUND 3 </i> <br><hr>
-                      <b>WINNER:</b> <br> <i> Charles Leclerc </i> <br><hr>
-                      08-10 April
-                    """,
-                      icon=folium.Icon()).add_to(m)
+        for geo_data in markers.keys():
+            folium.Marker(location=[geo_data[1], geo_data[2]],
+                          popup=f"""
+                        <b>ENTITY:</b> <br> <i> {geo_data[0]} </i> <br><hr>
+                        <b>REPORTS:</b> <br> <i> {markers[geo_data]} </i> <br><hr>
+                        18-20 March
+                        """,
+                          icon=folium.Icon()).add_to(m)
 
         return st.markdown(m._repr_html_(), unsafe_allow_html=True)
 
-    with col1:
-        display_map([45.372, -121.6972])
+    with col1, st.spinner(text=f'Searching: Grand Prix'):
+        reports: List[Report] = search_reports('Grand Prix')
+        markers = defaultdict(list)
+        for doc in reports:
+            for geo in doc.geo_data:
+                markers[(geo["entity_name"], geo["latitude"],
+                         geo["longitude"])].append(doc.id)
+        display_map(markers)

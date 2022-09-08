@@ -3,10 +3,6 @@ from elasticsearch import Elasticsearch, RequestError, helpers
 import pandas as pd
 import yaml
 from tqdm import tqdm
-import logging
-
-logging.getLogger("urllib3").setLevel(logging.ERROR)
-
 
 def read_yaml(file_path='config.yaml'):
     with open(file_path, "r") as f:
@@ -41,7 +37,6 @@ def es_create_index_if_not_exists(es, index):
 
 if __name__ == '__main__':
 
-    # client.indices.create(index=INDEX_NAME, body=mappings)
     col_headers = ['geonameid', 'name', 'asciiname', 'alternatenames', 'latitude', 'longitude', 'feature_class', 'feature_code', 'country_code',
                    'cc2', 'admin1_code', 'admin2_code', 'admin3_code', 'admin4_code', 'population', 'elevation', 'dem', 'timezone', 'modification_date']
     df = pd.read_csv(config['geo_file'], sep='\t', names=col_headers)
@@ -50,6 +45,10 @@ if __name__ == '__main__':
     alt_names = pd.read_csv(config['alt_names'], sep='\t', names=col_headers)
     # Check if indices is create, if yes throw exception
     es_create_index_if_not_exists(client, INDEX_NAME)
+    
+    # Translate feature class into numerical value based on importance
+    # Used for score weighing subsequently 
+    feature_map = ['U', 'V', 'H', 'T', 'L', 'R', 'S', 'P', 'A']
 
     # Filter English preferred names
     en_preferred_alt_names = alt_names[alt_names['isolanguage'] == 'en']
@@ -74,6 +73,7 @@ if __name__ == '__main__':
             actions = []
 
         loc_dict = rows.dropna().to_dict()
+        loc_dict['feature_class_num'] = feature_map.index(loc_dict['feature_class'])+1 #Ensure value is non-zero
         geo_id = loc_dict['geonameid']
         loc_dict.pop('geonameid', None)
         source_dict = {}

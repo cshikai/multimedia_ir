@@ -20,12 +20,24 @@ client = Elasticsearch(ELASTIC_URL,  # ca_certs="",
 
 
 def get_location(loc_name):
-    geo_query = {"multi_match": {
-        "query": loc_name,
-        # Emphasis on preferred name > original name > alternate name; score boosting
-        "fields": ["asciiname^2", "alternatenames", "preferrednames^2.5"]
-        # "fuzziness": 'AUTO'
-    }
+    geo_query = {
+        "query": {
+            "function_score": {
+                "query": {
+                    "multi_match": {
+                        "query": loc_name,
+                        # Emphasis on preferred name > original name > alternate name; score boosting
+                        "fields": ["asciiname^2", "alternatenames", "preferrednames^2.5"]
+                        }
+                    },
+                    "script_score": {
+                        "script": {
+                        # Scale feature_class_num from 1-9 to 0.7 to 1, serving as a multiplier on the score.
+                        "source": "(doc['feature_class_num'].value-1)*0.0375+0.7"
+                        }
+                    }
+            }
+        }
     }
     geo_resp = client.search(index='geonames', query=geo_query)
     return geo_resp

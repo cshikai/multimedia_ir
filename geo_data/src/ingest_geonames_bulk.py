@@ -9,6 +9,7 @@ def read_yaml(file_path='config.yaml'):
     with open(file_path, "r") as f:
         return yaml.safe_load(f)
 
+
 config = read_yaml()
 
 ELASTIC_URL = config['ELASTICSEARCH']['URL']
@@ -45,7 +46,7 @@ if __name__ == '__main__':
     es_create_index_if_not_exists(client, INDEX_NAME)
 
     # Translate feature class into numerical value based on importance
-    # Used for score weighing subsequently 
+    # Used for score weighing subsequently
     feature_map = ['U', 'V', 'H', 'T', 'L', 'R', 'S', 'P', 'A']
 
     actions = []
@@ -57,7 +58,9 @@ if __name__ == '__main__':
             actions = []
 
         loc_dict = rows.dropna().to_dict()
-        loc_dict['feature_class_num'] = feature_map.index(loc_dict['feature_class'])+1 #Ensure value is non-zero
+        if 'feature_class' in loc_dict:
+            loc_dict['feature_class_num'] = feature_map.index(
+                loc_dict['feature_class'])+1  # Ensure value is non-zero
         geo_id = loc_dict['geonameid']
         loc_dict.pop('geonameid', None)
         source_dict = {}

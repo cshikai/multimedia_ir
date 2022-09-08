@@ -3,7 +3,7 @@ import streamlit as st
 import numpy as np
 import os
 import requests
-from itertools import cycle
+import re
 from typing import List, Dict
 from PIL import Image, ImageDraw
 import json
@@ -89,10 +89,13 @@ def escape_latex(text: str) -> str:
 
 def generate_hypertext(text_entities: List[Dict], body: str):
     hypertext = body
-    for entity in text_entities:
+    # Sort entities such that the longer mentions get replaced first
+    sorted_entities = sorted(
+        text_entities, key=lambda entity: len(entity['mention']), reverse=True)
+    for entity in sorted_entities:
         if entity["mention"] != " " and entity['entity_link'] != "Unknown":
-            hypertext = hypertext.replace(
-                entity["mention"], f"<a href='?entity={entity['entity_link']}' target='_self'>{entity['mention']}</a>")
+            hypertext = re.sub(
+                fr"\b{entity['mention']}\b", f"<a href='?entity={entity['entity_link']}' target='_self'>{entity['mention']}</a>", hypertext)
     return hypertext
 
 
@@ -134,7 +137,6 @@ def get_report(id: int) -> Report:
         images[server_path] = get_image(server_path)
     visual_entities = json.loads(
         res['hits']['hits'][0]['_source']['visual_entities'] if images else "{}")
-    print(visual_entities)
     result = Report(id=res['hits']['hits'][0]['_source']['ID'],
                     title=res['hits']['hits'][0]['_id'], body=hypertext, images=images, visual_entities=visual_entities)
     return result

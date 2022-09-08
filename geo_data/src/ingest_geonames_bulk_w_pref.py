@@ -4,6 +4,7 @@ import pandas as pd
 import yaml
 from tqdm import tqdm
 
+
 def read_yaml(file_path='config.yaml'):
     with open(file_path, "r") as f:
         return yaml.safe_load(f)
@@ -45,9 +46,9 @@ if __name__ == '__main__':
     alt_names = pd.read_csv(config['alt_names'], sep='\t', names=col_headers)
     # Check if indices is create, if yes throw exception
     es_create_index_if_not_exists(client, INDEX_NAME)
-    
+
     # Translate feature class into numerical value based on importance
-    # Used for score weighing subsequently 
+    # Used for score weighing subsequently
     feature_map = ['U', 'V', 'H', 'T', 'L', 'R', 'S', 'P', 'A']
 
     # Filter English preferred names
@@ -73,7 +74,11 @@ if __name__ == '__main__':
             actions = []
 
         loc_dict = rows.dropna().to_dict()
-        loc_dict['feature_class_num'] = feature_map.index(loc_dict['feature_class'])+1 #Ensure value is non-zero
+        if 'feature_class' in loc_dict:
+            loc_dict['feature_class_num'] = feature_map.index(
+                loc_dict['feature_class'])+1  # Ensure value is non-zero
+        else:
+            loc_dict['feature_class_num'] = 1  # Default to lowest value
         geo_id = loc_dict['geonameid']
         loc_dict.pop('geonameid', None)
         source_dict = {}

@@ -61,6 +61,8 @@ if __name__ == '__main__':
         if 'feature_class' in loc_dict:
             loc_dict['feature_class_num'] = feature_map.index(
                 loc_dict['feature_class'])+1  # Ensure value is non-zero
+        else:
+            loc_dict['feature_class_num'] = 1  # Default to lowest value
         geo_id = loc_dict['geonameid']
         loc_dict.pop('geonameid', None)
         source_dict = {}

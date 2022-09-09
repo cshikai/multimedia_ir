@@ -3,6 +3,7 @@ import json
 import requests
 import yaml
 import os
+import numpy as np
 
 from PIL import Image, ImageDraw
 from elasticsearch import Elasticsearch
@@ -30,11 +31,12 @@ if __name__ == '__main__':
     img_folder = config['infer']['img_folder']
     for subfolder in os.listdir(img_folder):
         print(subfolder)
-        detection_dict = {}
+        inference_list = []
+
         for img_file in os.listdir(img_folder+'/'+subfolder):
+            detection_dict = {}
             file_index = img_file.split('_')[1].split('.')[0]
             file_key = '/images/f1/{}/{}.h5'.format(subfolder, file_index)
-            detection_dict[file_key] = {}
             with open(img_folder+'/'+subfolder+'/'+img_file, "rb") as f:
                 im_bytes = f.read()
             im_b64 = base64.b64encode(im_bytes).decode("utf8")
@@ -51,27 +53,31 @@ if __name__ == '__main__':
                 '{}/infer'.format(config['endpt']['yolo_endpt']), data=payload, headers=headers)
             res_yolo = json.loads(r_yolo.text)
 
+            detection_dict['file_name']=file_key
+
             # Facenet Inference
             mask = [True if a > 0.5 else False for a in res_fn['cos_conf']]
             id_list = [a if mask[res_fn['cos_id'].index(a)] else -1 for a in res_fn['cos_id']]
-            detection_dict[file_key]['person_bbox'] = res_fn['bb']
-            detection_dict[file_key]['person_id'] = id_list
-            detection_dict[file_key]['person_conf'] = res_fn['cos_conf']
+            res_fn['bb'] = [[max(b, 0) for b in a] for a in res_fn['bb']] # Clip negative value to 0
+            detection_dict['person_bbox'] = res_fn['bb']
+            detection_dict['person_id'] = id_list
+            detection_dict['person_conf'] = res_fn['cos_conf']
 
             # YOLO Inference
             mask = [True if a > 0.5 else False for a in res_yolo['conf']]
             obj_list = [a if mask[res_yolo['classes'].index(a)] else 'Unknown' for a in res_yolo['classes']]
-            detection_dict[file_key]['obj_bbox'] = res_yolo['bbox']
-            detection_dict[file_key]['obj_class'] = obj_list
-            detection_dict[file_key]['obj_conf'] = res_yolo['conf']
+            res_yolo['bbox'] = [[max(b, 0) for b in a] for a in res_yolo['bbox']]
+            detection_dict['obj_bbox'] = res_yolo['bbox']
+            detection_dict['obj_class'] = obj_list
+            detection_dict['obj_conf'] = res_yolo['conf']
 
-        # Convert dict to str, so as to retain shape when uploaded to ES
-        detection_dict_str = json.dumps(detection_dict)
+            inference_list.append(detection_dict)
+
         q = {
             "script": {
                 "source": "ctx._source.visual_entities=params.infer",
                 "params": {
-                    "infer": detection_dict_str
+                    "infer": inference_list
                 },
                 "lang": "painless"
             },

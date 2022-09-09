@@ -51,20 +51,24 @@ if __name__ == '__main__':
                 '{}/infer'.format(config['endpt']['yolo_endpt']), data=payload, headers=headers)
             res_yolo = json.loads(r_yolo.text)
 
-            detection_dict['file_name']=file_key
+            detection_dict['file_name'] = file_key
 
             # Facenet Inference
             mask = [True if a > 0.5 else False for a in res_fn['cos_conf']]
-            id_list = [a if mask[res_fn['cos_id'].index(a)] else -1 for a in res_fn['cos_id']]
-            res_fn['bb'] = [[max(b, 0) for b in a] for a in res_fn['bb']] # Clip negative value to 0
+            id_list = [int(a) if mask[res_fn['cos_id'].index(a)]
+                       else -1 for a in res_fn['cos_id']]
+            res_fn['bb'] = [[max(b, 0) for b in a]
+                            for a in res_fn['bb']]  # Clip negative value to 0
             detection_dict['person_bbox'] = res_fn['bb']
             detection_dict['person_id'] = id_list
             detection_dict['person_conf'] = res_fn['cos_conf']
 
             # YOLO Inference
             mask = [True if a > 0.5 else False for a in res_yolo['conf']]
-            obj_list = [a if mask[res_yolo['classes'].index(a)] else 'Unknown' for a in res_yolo['classes']]
-            res_yolo['bbox'] = [[max(b, 0) for b in a] for a in res_yolo['bbox']]
+            obj_list = [a if mask[res_yolo['classes'].index(
+                a)] else 'Unknown' for a in res_yolo['classes']]
+            res_yolo['bbox'] = [[max(b, 0) for b in a]
+                                for a in res_yolo['bbox']]
             detection_dict['obj_bbox'] = res_yolo['bbox']
             detection_dict['obj_class'] = obj_list
             detection_dict['obj_conf'] = res_yolo['conf']

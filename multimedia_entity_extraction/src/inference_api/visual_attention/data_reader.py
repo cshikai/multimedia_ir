@@ -1,5 +1,8 @@
 
 
+import requests
+import numpy as np
+from spacy.lang.en import English
 import os
 from PIL import Image
 
@@ -13,42 +16,163 @@ from inference_api.common.inference.data_reader import DataReader
 
 class VALiveDataReader(DataReader):
 
-    ELASTIC_URL = "http://elasticsearch:9200"
-    FIELDS = ['']
+    ELASTIC_URL = "https://elasticsearch:9200"
+
     def __init__(self):
-        self.client = Elasticsearch(self.ELASTIC_URL)
+        self.text_entity_extractor = UnknownTextEntityExtractor()
+        self.visual_entity_extractor = UnknownVisualEntityExtractor()
+        self.client = Elasticsearch(self.ELASTIC_URL,
+                                    basic_auth=('elastic', 'changeme'),
+                                    verify_certs=False
+                                    )
+
+    def get_generator(self, document_ids):
+        index = 0
+        for document_id in document_ids:
+            result = self.client.get(index='documents',
+                                     id=document_id,
+                                     )
+
+            text_content = result['_source']['content']
+            visual_entities = result['_source']['visual_entities']
+            text_entities = result['_source']['text_entities']
+
+            text_generator = self.text_entity_extractor.get_generator(
+                text_content, text_entities)
+            image_generator = self.visual_entity_extractor.get_generator(
+                visual_entities)
+
+            for image_url, image_data, bounding_box in image_generator:
+                for text, token_span in text_generator:
+                    yield {
+                        'index': index,
+                        'image_url': image_url,
+                        'text': text,
+                        'image': image_data,
+                        'token_span': token_span,
+                        'bounding_box': bounding_box}
 
 
-    def get(self,document_id):
-        result = self.client.get(index='documents',id=document_id,stored_fields =self.FIELDS)
-        
+class UnknownVisualEntityExtractor:
+
+    def __init__(self):
+        pass
+
+    def get_generator(self, images):
+
+        for image in images:
+            entity_ids = image['person_id']
+            bounding_boxes = image['person_bbox']
+            image_url = image['file_name']
+
+            image_data = self.download_image(image_url)
+            N = len(entity_ids)
+            for i in range(N):
+                entity_id = entity_ids[i]
+                if entity_id == -1:
+                    yield image_url, image_data, bounding_boxes[i]
+
+    def download_image(self, server_path):
+        body = {'server_path': server_path}
+        r = requests.get('http://image_server:8000/download/', json=body)
+        image = np.asarray(r.json()['image'])
+        return image
+
+
+class UnknownTextEntityExtractor:
+
+    def __init__(self):
+        self.token_mapper = TextTokenMapper()
+
+    def get_generator(self, text, text_entities):
+        N = len(text_entities)
+        sentences = self.token_mapper.split_sentences(text)
+        for i in range(N):
+            entity = text_entities[i]
+            if entity['entity_link'] == -1:
+                sentence_index, span_start, span_end = entity['mention_span']
+                sentence = sentences[sentence_index]
+                token_span = self.token_mapper.get_tokens(
+                    sentence, entity['mention'], span_start, span_end)
+                yield sentences[sentence_index], token_span
+
+
+class TextTokenMapper:
+
+    def __init__(self):
+        self.sentencizer = English()
+        self.sentencizer.add_pipe('sentencizer')
+
+    def split_sentences(self, text):
+        paras = text.split("\n")
+        sentences = []
+        for para in paras:
+            str_sents = list(self.sentencizer(para).sents)
+            for sent in str_sents:
+                tokens = list(self.sentencizer.tokenizer(sent.text))
+                tokens = [token.text for token in tokens]
+                if len(tokens) > 0:
+                    sentences.append(sent.text)
+        return sentences
+
+    def get_tokens(self, sentence, entity_mention, span_start, span_end):
+        tokens = sentence.split(' ')
+        N = len(tokens)
+        entity_tokens = len(entity_mention.split(' '))
+        cumilative_char_index = 0
+        char_to_token_span = []
+
+        for token_index, token in enumerate(tokens):
+            end_char_index = cumilative_char_index + len(token)
+            char_to_token_span.append(
+                (cumilative_char_index, end_char_index, token_index))
+            cumilative_char_index = end_char_index + 1
+        left = 0
+        char_2_token_spans = {}
+        for right in range(entity_tokens-1, N):
+            left_start_index, left_end_index, left_token_index = char_to_token_span[left]
+            right_start_index, right_end_index, right_token_index = char_to_token_span[right]
+            char_2_token_spans[(left_start_index, right_end_index)] = (
+                left_token_index, right_token_index)
+            left += 1
+
+        while span_start > 0 and sentence[span_start - 1] != ' ':
+            span_start -= 1
+        while span_end < len(sentence) and sentence[span_end] != ' ':
+            span_end += 1
+
+        token_span = char_2_token_spans[(span_start, span_end)]
+
+        return token_span
+
 
 class VADataReader(DataReader):
 
     DATA_ROOT = '/data/'
 
     def __init__(self):
-        self.root_folder = os.path.join(self.DATA_ROOT, 'valid','manifest')
+        self.root_folder = os.path.join(self.DATA_ROOT, 'valid', 'manifest')
         self.data = dd.read_parquet(os.path.join(self.root_folder, 'data.parquet'),
                                     columns=['filename', 'caption'],
-                                    engine='fastparquet')  
+                                    engine='fastparquet')
+
     def read(self, index):
         data_slice = self.data.loc[index].compute()
         text = self.read_text(data_slice)
         image, image_url = self.read_image(data_slice)
 
         return {
-            'index':index,
+            'index': index,
             'image_url': image_url,
-            'text':text,
-            'image':image
-            }
+            'text': text,
+            'image': image
+        }
 
-    def read_text(self,data_slice):
+    def read_text(self, data_slice):
         text = data_slice['caption'].values[0]
-        return text 
+        return text
 
-    def read_image(self,data_slice):
+    def read_image(self, data_slice):
         image_url = data_slice['filename'].values[0]
         image = Image.open(os.path.join(
             self.DATA_ROOT,  image_url))
@@ -59,12 +183,7 @@ class VADataReader(DataReader):
             rgbimg.paste(image)
             image = rgbimg
 
-        return image , image_url
-
-
-
-
-       
+        return image, image_url
 
 
 class VALiveDataReader(DataReader):

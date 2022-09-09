@@ -20,23 +20,29 @@ client = Elasticsearch(ELASTIC_URL,  # ca_certs="",
 
 
 def get_location(loc_name):
-    geo_query = {
-        "function_score": {
-            "query": {
-                "multi_match": {
-                    "query": loc_name,
-                    # Emphasis on preferred name > original name > alternate name; score boosting
-                    "fields": ["asciiname^2", "alternatenames", "preferrednames^2.5"]
-                }
-            },
-            "script_score": {
-                "script": {
-                    # Scale feature_class_num from 1-9 to 0.7 to 1, serving as a multiplier on the score.
-                    "source": "(doc['feature_class_num'].value-1)*0.0375+0.7"
-                }
-            }
-        }
-    }
+    # geo_query = {
+    #     "function_score": {
+    #         "query": {
+    #             "multi_match": {
+    #                 "query": loc_name,
+    #                 # Emphasis on preferred name > original name > alternate name; score boosting
+    #                 "fields": ["asciiname^2", "alternatenames", "preferrednames^2.5"]
+    #             }
+    #         },
+    #         "script_score": {
+    #             "script": {
+    #                 # Scale feature_class_num from 1-9 to 0.7 to 1, serving as a multiplier on the score.
+    #                 "source": "(doc['feature_class_num'].value-1)*0.0375+0.7"
+    #             }
+    #         }
+    #     }
+    # }
+    geo_query = {"multi_match":
+                 {
+                     "query": loc_name,
+                     "fields": ["asciiname^2", "alternatenames", "preferrednames^2.5"]
+                 }
+                 }
     geo_resp = client.search(index='geonames', query=geo_query)
     return geo_resp
 
@@ -54,7 +60,6 @@ if __name__ == "__main__":
                 entity_name = entity['entity_name']
                 if entity_name == 'Unknown':
                     continue
-                print(entity_name)
                 geo_resp = get_location(entity_name)
 
                 # If no location found

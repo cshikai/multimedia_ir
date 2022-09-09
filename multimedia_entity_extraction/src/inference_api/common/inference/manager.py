@@ -35,48 +35,69 @@ class InferenceManager(ABC):
 
         '''
 
-        output = {}
-        index_len = len(indexes)
+        self.output = {}
+        self.num_batch = 0
 
-        num_batch = (index_len//self.triton_manager.triton_cfg['max_batch']) + \
-            (index_len % self.triton_manager.triton_cfg['max_batch'] > 0)
+        data_generator = self.reader.get_generator(indexes)
+        data_count = 0
+        num_batch = 0
+        for data in data_generator:
 
-        for b in range(num_batch):
-            self.logger.info(
-                '{} - Begin Batch {} out of {} '.format(datetime.now(), b+1, num_batch))
-            start_index = b*self.triton_manager.triton_cfg['max_batch']
-            end_index = (b+1)*self.triton_manager.triton_cfg['max_batch']
-            batch_output = self._infer_single_batch(
-                indexes[start_index:end_index])
-            for key, value in batch_output.items():
-                output[key] = output.get(key,[]) + [value]
-        return output
+            if data_count == 0:
+                batch_data = {}
+            data_count += 1
+            processed_data_slice = self.processor.preprocess_for_triton(
+                **data)
+            for key, value in processed_data_slice.items():
+                batch_data[key] = batch_data.get(key, []) + [value]
 
-    def _infer_single_batch(self, indexes):
+            if num_batch == self.triton_manager.triton_cfg['max_batch']:
+                self._infer_single_batch(batch_data)
+                data_count = 0
+
+        if data_count:
+            self._infer_single_batch(batch_data)
+        # output = {}
+        # index_len = len(indexes)
+
+        # num_batch = (index_len//self.triton_manager.triton_cfg['max_batch']) + \
+        #     (index_len % self.triton_manager.triton_cfg['max_batch'] > 0)
+
+        # for b in range(num_batch):
+        #     self.logger.info(
+        #         '{} - Begin Batch {} out of {} '.format(datetime.now(), b+1, num_batch))
+        #     start_index = b*self.triton_manager.triton_cfg['max_batch']
+        #     end_index = (b+1)*self.triton_manager.triton_cfg['max_batch']
+        #     batch_output = self._infer_single_batch(
+        #         indexes[start_index:end_index])
+        #     for key, value in batch_output.items():
+        #         output[key] = output.get(key,[]) + [value]
+        return self.output
+
+    def _infer_single_batch(self, batch_data, num_batch):
         '''
         Carry out inference for a batch that is at most as big as the batch size specific by the triton model
         '''
 
-        batch_data = {}
+        self.num_batch += 1
+        self.logger.info(
+            '{} - Begin Batch {}'.format(datetime.now(), self.num_batch))
 
-        for index in indexes:
-            index_data = self.reader.read(index)
-            processed_data_slice = self.processor.preprocess_for_triton(
-                **index_data)
-            for key, value in processed_data_slice.items():
-                batch_data[key] = batch_data.get(key,[]) + [value]
-
-        batch_input_data, metadata = self.processor.collate_for_triton(**batch_data)
+        batch_input_data, metadata = self.processor.collate_for_triton(
+            **batch_data)
 
         # try:
-        output_data = self.triton_manager.infer_with_triton(batch_input_data)
+        batch_output_data = self.triton_manager.infer_with_triton(
+            batch_input_data)
         # except:
         #     self.logger.info(
         #         '{} - Unable to get results from Triton Server'.format(datetime.now()))
         #     raise ConnectionError('Unable to get response from Triton Server')
 
-        readable_results = self.processor.postprocess_from_triton(output_data,metadata)
+        batch_readable_results = self.processor.postprocess_from_triton(
+            batch_output_data, metadata)
 
-        output = self.writer.write(**readable_results)
+        batch_output = self.writer.write(**batch_readable_results)
 
-        return output
+        for key, value in batch_output.items():
+            self.output[key] = self.output.get(key, []) + [value]

@@ -3,9 +3,7 @@ import json
 import requests
 import yaml
 import os
-import numpy as np
 
-from PIL import Image, ImageDraw
 from elasticsearch import Elasticsearch
 
 

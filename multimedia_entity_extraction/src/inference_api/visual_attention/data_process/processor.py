@@ -36,11 +36,21 @@ class VAProcessor(Processor):
             'index': kwargs['index'],
             'image_url': kwargs['image_url'],
             'raw_text': kwargs['text'],
+            'text_entity_index': kwargs['text_entity_index'],
+            'image_entity_index': kwargs['image_entity_index'],
+            'token_span': kwargs['token_span'],
+            'bounding_box': kwargs['bounding_box']
             }
+
 
     def collate_for_triton(self, **kwargs):
 
-        batch = list(zip(kwargs['text'],kwargs['index'],kwargs['text_len'],kwargs['image'],kwargs['image_url'],kwargs['raw_text']))
+        batch = list(zip(kwargs['text'],kwargs['index'],kwargs['text_len'],kwargs['image'],kwargs['image_url'],kwargs['raw_text'],
+        kwargs['text_entity_index'],
+        kwargs['image_entity_index'],
+        kwargs['token_span'], 
+        kwargs['bounding_box']
+        ))
        
         batch.sort(key=lambda x: x[2], reverse=True)
 
@@ -51,25 +61,43 @@ class VAProcessor(Processor):
             batch)
 
         batch_len = np.expand_dims(np.array(batch_len), 1)
-        batch_index = np.array(batch_index)
 
-        batch_raw_text = [b[-1] for b in batch]
+        batch_raw_text = [b[5] for b in batch]
+        batch_text_entity_index = [b[6] for b in batch]
+        batch_image_entity_index = [b[7] for b in batch]
+        batch_token_span = [b[8] for b in batch]
+        batch_bounding_box = [b[9] for b in batch]
+        batch_image_dimensions = [b[3].shape for b in batch]
+        triton_data = {
+            'INPUT__0': batch_image,
+            'INPUT__1': batch_text,
+            'INPUT__2': batch_len,
+                }
+        metadata =  {
+            'indexes': list(batch_index), 
+            'image_urls' : list(batch_url),
+            'raw_texts':batch_raw_text,
+            'text_entity_index': batch_text_entity_index,
+            'image_entity_index': batch_image_entity_index,
+            'token_span': batch_token_span,
+            'bounding_box': batch_bounding_box,
+            'image_dimensions': batch_image_dimensions
+            }
 
-        return {'INPUT__0': batch_image,
-                'INPUT__1': batch_text,
-                'INPUT__2': batch_len,
-                }, {'index':batch_index, 'url' : batch_url,'raw_text':batch_raw_text}
 
+        return triton_data, metadata
     def postprocess_from_triton(self, output_data,  metadata):
         #{'outputs': [{'data': batch_heatmap}, ]}
         heatmap = output_data['outputs'][0]['data']
         
         results = {}
 
-        results['word_image_heatmap'] = heatmap
-        results['raw_texts'] = metadata['raw_text']
-        results['image_urls'] = metadata['url'] 
-        results['indexes'] = metadata['index']
+        results['word_image_heatmap'] = [heatmap[i] for i in range(heatmap.shape[0])]
+
+        for key,value in metadata.items():
+            results[key] = value
+
+   
         return results
 
             

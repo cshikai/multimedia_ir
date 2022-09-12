@@ -39,7 +39,7 @@ class PreProcessor():
 
 
         # batch.sort(key=lambda x: x[-1], reverse=True)
-        batch_text, batch_index, batch_len, _ ,_ , _= zip(*batch)
+        batch_text, batch_index, batch_len, _ ,_ , _ , _ ,_ ,_ ,_= zip(*batch)
         # batch_pad_text = torch.nn.utils.rnn.pad_sequence(
         #     batch_text, batch_first=True, padding_value=0)
 

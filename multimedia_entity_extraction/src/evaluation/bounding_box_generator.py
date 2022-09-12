@@ -10,17 +10,17 @@ class BoundingBoxGenerator:
 
     FOLDER_PATH = '/data/heatmaps/'
 
-
+    MODE = 'MAX'
+    
     def __init__(self):
         if not os.path.exists(self.FOLDER_PATH):
             os.makedirs(self.FOLDER_PATH)
 
     def generate(self,word_image_heatmap,raw_texts,image_urls,indexes):
 
-        N = word_image_heatmap.shape[0]
+        batch_size = word_image_heatmap.shape[0]
 
-
-        for n in range(N):
+        for n in range(batch_size):
             raw_text = raw_texts[n]
             image_url = image_urls[n]
             index = indexes[n]

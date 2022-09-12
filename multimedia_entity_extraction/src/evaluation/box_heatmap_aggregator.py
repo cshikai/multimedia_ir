@@ -4,54 +4,73 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from textwrap import wrap
 import torch
-
+import numpy as np
 
 from inference_api.visual_attention.model_config.config import cfg
 class BoxHeatmapAggregator:
 
     FOLDER_PATH = '/data/heatmaps/'
 
-
+    MODE = 'MAX'
     def __init__(self):
-        if not os.path.exists(self.FOLDER_PATH):
-            os.makedirs(self.FOLDER_PATH)
-
-        self.scale_height = cfg.data.transforms.image.Resize.height
-        self.scale_width = cfg.data.transforms.image.Resize.width
+        self.scale_height = cfg['data']['transforms']['image']['Resize']['height']
+        self.scale_width = cfg['data']['transforms']['image']['Resize']['width']
 
 
-    def generate(self,word_image_heatmap,box_coordinates,image_dims,text_span):
-        box_coordinates = self._scale_bounding_box(image_dims,box_coordinates)
-        return self._generate(word_image_heatmap,box_coordinates,text_span)
+    def aggregate(self,**kwargs):
 
-    def _generate(self,word_image_heatmap,box_coordinates,text_span):
+        image_dims = kwargs['image_dimensions']
+        batch_bounding_box = kwargs['bounding_box']
+        
+        word_image_heatmaps = kwargs['word_image_heatmap']
+        token_spans = kwargs['token_span']
+
+        
+        batch_size = len(token_spans)
+        activations = np.zeros(batch_size)
+        for i in range(batch_size):
+            scaled_bounding_box = self._scale_bounding_box(image_dims[i],batch_bounding_box[i])
+            activations[i] = self._aggregate(word_image_heatmaps[i],scaled_bounding_box,token_spans[i])
+        
+        return activations
+
+    def _aggregate(self,word_image_heatmap,bounding_box,token_span):
         # coordinates are [top left (x1,y1), bottom right(x2,y2)]
 
-        top_bound = box_coordinates[0][1]
-        bottom_bound = box_coordinates[1][1]
+        top_bound = bounding_box[0][1]
+        bottom_bound = bounding_box[1][1]
 
-        left_bound = box_coordinates[0][0]
-        right_bound = box_coordinates[1][0]
+        left_bound = bounding_box[0][0]
+        right_bound = bounding_box[1][0]
 
         #(h,w,t,l)
-        heatmap_window = word_image_heatmap[bottom_bound:top_bound+1,left_bound:right_bound+1,text_span[0]:text_span[1]+1,:]
-        average_heatmap = torch.mean(heatmap_window,dim=(0,1,2)).numpy()
-        max_heatmap = torch.max(heatmap_window,dim=(0,1,2)).numpy()
+        heatmap_window = word_image_heatmap[bottom_bound:top_bound+1,left_bound:right_bound+1,token_span[0]:token_span[1]+1,:]
+        if self.MODE == 'MAX':
+            # print(heatmap_window.shape)
+            # print(heatmap_window.reshape(-1,heatmap_window.shape[3]).shape)
+            heatmap = torch.max(heatmap_window.reshape(-1,heatmap_window.shape[3]),dim=0)[0]
         
-        return average_heatmap,max_heatmap
+        elif self.MODE == 'MEAN':
+            print(heatmap_window.reshape(-1,heatmap_window.shape[3]).shape)
+            heatmap = torch.mean(heatmap_window.reshape(-1,heatmap_window.shape[3]),dim=0)
+
+        return torch.max(heatmap,dim=0)[0].numpy()
 
 
-    def _scale_bounding_box(self,image_dims,box_coordinates):
+    def _scale_bounding_box(self,image_dims,bounding_boxes):
         x_ratio = image_dims[0]/self.scale_width
         y_ratio = image_dims[1]/self.scale_height
 
         max_ratio = max(x_ratio,y_ratio)
-
+        print(bounding_boxes)
         #may encounter rounding error
-        for j in range(2):
-            for i in range(2):
-                box_coordinates[i][j] = box_coordinates[i][j] / max_ratio
+        scaled_boxes = []
+        for i in range(2):
+            scaled_box = [0,0]
+            for j in range(2):
+                scaled_box[j] = int(bounding_boxes[i][j] / max_ratio)
+            scaled_boxes.append(tuple(scaled_box))
 
-        return box_coordinates
+        return scaled_boxes
 
     

@@ -42,12 +42,14 @@ class VALiveDataReader(DataReader):
             image_generator = self.visual_entity_extractor.get_generator(
                 visual_entities)
 
-            for image_url, image_data, bounding_box in image_generator:
-                for text, token_span in text_generator:
+            for image_url, image_entity_index, image_data, bounding_box in image_generator:
+                for text, text_entity_index, token_span in text_generator:
                     yield {
-                        'index': index,
+                        'index': document_id,
                         'image_url': image_url,
                         'text': text,
+                        'text_entity_index': text_entity_index,
+                        'image_entity_index': image_entity_index,
                         'image': image_data,
                         'token_span': token_span,
                         'bounding_box': bounding_box}
@@ -70,7 +72,7 @@ class UnknownVisualEntityExtractor:
             for i in range(N):
                 entity_id = entity_ids[i]
                 if entity_id == -1:
-                    yield image_url, image_data, bounding_boxes[i]
+                    yield image_url, i, image_data, bounding_boxes[i]
 
     def download_image(self, server_path):
         body = {'server_path': server_path}
@@ -94,7 +96,7 @@ class UnknownTextEntityExtractor:
                 sentence = sentences[sentence_index]
                 token_span = self.token_mapper.get_tokens(
                     sentence, entity['mention'], span_start, span_end)
-                yield sentences[sentence_index], token_span
+                yield sentences[sentence_index], i, token_span
 
 
 class TextTokenMapper:
@@ -156,16 +158,30 @@ class VADataReader(DataReader):
                                     columns=['filename', 'caption'],
                                     engine='fastparquet')
 
+    def get_generator(self, indexes):
+        for index in indexes:
+            yield self.read(index)
+
+            
     def read(self, index):
         data_slice = self.data.loc[index].compute()
         text = self.read_text(data_slice)
         image, image_url = self.read_image(data_slice)
 
+        text_entity_index = 1
+        image_entity_index = 1
+        token_span = (1,1)
+        bounding_box = [(1,4),(3,2)]
+
         return {
             'index': index,
             'image_url': image_url,
             'text': text,
-            'image': image
+            'image': image,
+            'text_entity_index': text_entity_index,
+            'image_entity_index': image_entity_index,
+            'token_span': token_span,
+            'bounding_box': bounding_box
         }
 
     def read_text(self, data_slice):

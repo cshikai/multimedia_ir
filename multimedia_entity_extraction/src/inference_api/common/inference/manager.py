@@ -40,7 +40,6 @@ class InferenceManager(ABC):
 
         data_generator = self.reader.get_generator(indexes)
         data_count = 0
-        num_batch = 0
         for data in data_generator:
 
             if data_count == 0:
@@ -51,30 +50,20 @@ class InferenceManager(ABC):
             for key, value in processed_data_slice.items():
                 batch_data[key] = batch_data.get(key, []) + [value]
 
-            if num_batch == self.triton_manager.triton_cfg['max_batch']:
+            if data_count == self.triton_manager.triton_cfg['max_batch']:
+                
                 self._infer_single_batch(batch_data)
                 data_count = 0
 
+
         if data_count:
             self._infer_single_batch(batch_data)
-        # output = {}
-        # index_len = len(indexes)
 
-        # num_batch = (index_len//self.triton_manager.triton_cfg['max_batch']) + \
-        #     (index_len % self.triton_manager.triton_cfg['max_batch'] > 0)
+        self.writer.write(**self.output)
 
-        # for b in range(num_batch):
-        #     self.logger.info(
-        #         '{} - Begin Batch {} out of {} '.format(datetime.now(), b+1, num_batch))
-        #     start_index = b*self.triton_manager.triton_cfg['max_batch']
-        #     end_index = (b+1)*self.triton_manager.triton_cfg['max_batch']
-        #     batch_output = self._infer_single_batch(
-        #         indexes[start_index:end_index])
-        #     for key, value in batch_output.items():
-        #         output[key] = output.get(key,[]) + [value]
         return self.output
 
-    def _infer_single_batch(self, batch_data, num_batch):
+    def _infer_single_batch(self, batch_data):
         '''
         Carry out inference for a batch that is at most as big as the batch size specific by the triton model
         '''
@@ -94,10 +83,9 @@ class InferenceManager(ABC):
         #         '{} - Unable to get results from Triton Server'.format(datetime.now()))
         #     raise ConnectionError('Unable to get response from Triton Server')
 
-        batch_readable_results = self.processor.postprocess_from_triton(
+        batch_postprocessed_output = self.processor.postprocess_from_triton(
             batch_output_data, metadata)
 
-        batch_output = self.writer.write(**batch_readable_results)
-
-        for key, value in batch_output.items():
-            self.output[key] = self.output.get(key, []) + [value]
+        
+        for key, value in batch_postprocessed_output.items():
+            self.output[key] = self.output.get(key, []) + value

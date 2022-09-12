@@ -27,7 +27,7 @@ es = Elasticsearch(ELASTIC_URL,
 
 
 class Report:
-    def __init__(self, id, title="", body="", date="", associated_entities=[], images={}, visual_entities="", geo_data=[], timestamp=""):
+    def __init__(self, id, title="", body="", date="", associated_entities=[], images={}, visual_entities=[], geo_data=[], timestamp=""):
         self.id = id
         self.title = title
         self.body = body
@@ -116,7 +116,11 @@ def search_reports(query: str, start_date=None, end_date=None) -> List[Report]:
     if start_date or end_date:
         es_query["bool"]["filter"] = {
             "range": {"timestamp": {"gte": start_date, "lte": end_date}}}
-    res = es.search(index="documents", query=es_query, size=20)
+
+    if query == "*":
+        res = es.search(index="documents", query={"match_all": {}}, size=10000)
+    else:
+        res = es.search(index="documents", query=es_query, size=20)
     results = []
     for doc in res['hits']['hits']:
         id = doc['_source']['ID']
@@ -145,8 +149,8 @@ def get_report(id: int) -> Report:
     images = {}
     for server_path in res['hits']['hits'][0]['_source']['images']:
         images[server_path] = get_image(server_path)
-    visual_entities = json.loads(
-        res['hits']['hits'][0]['_source']['visual_entities'] if images else "{}")
+    visual_entities = res['hits']['hits'][0]['_source']['visual_entities'] if images else [
+    ]
     result = Report(id=res['hits']['hits'][0]['_source']['ID'],
                     title=res['hits']['hits'][0]['_id'], body=hypertext, images=images, visual_entities=visual_entities)
     return result
@@ -182,6 +186,8 @@ inp = st.text_input(label='Search', key='searchbar',
                     value=st.session_state['search'], placeholder='Lewis Hamilton')
 reports = None
 
+
+print(inp)
 if inp != "":
     # Reset entity and report parameters on new query
     st.session_state['entity'] = ""
@@ -196,6 +202,7 @@ elif inp != query_params.get('search', [''])[0]:
     # User clears input
     query_params["search"] = inp
     st.experimental_set_query_params(**query_params)
+
 
 # TODO: Navigate using states instead of href to preserve (reports) cache and prevent reloading (+ requerying) when back button is used.
 if st.session_state['search']:
@@ -313,17 +320,25 @@ elif st.session_state['report']:
 
             for server_path, image in report.images.items():
                 im = Image.fromarray(np.asarray(image).astype(np.uint8))
-                for person_id in set(report.visual_entities[server_path]['person_id']):
-                    st.checkbox(
-                        label=person_id, key=f"{server_path}_{person_id}", value=True)
-                for idx, bbox in enumerate(report.visual_entities[server_path]['person_bbox']):
-                    draw = ImageDraw.Draw(im)
-                    if st.session_state[f"{server_path}_{report.visual_entities[server_path]['person_id'][idx]}"]:
-                        draw.rectangle(
-                            bbox)
-                        # Top left corner
-                        draw.text((bbox[0], bbox[1]),
-                                  f"ID: {report.visual_entities[server_path]['person_id'][idx]}, Conf: {report.visual_entities[server_path]['person_conf'][idx]}")
+                for visual_entity in report.visual_entities:
+                    if visual_entity["file_name"] != server_path:
+                        continue
+                    else:
+                        # Generate checkbox
+                        for person_id in set(visual_entity['person_id']):
+                            st.checkbox(
+                                label=f"{person_id}", key=f"{server_path}_{person_id}", value=True)
+
+                        # Generate bounding box
+                        for person_idx, bbox in enumerate(visual_entity['person_bbox']):
+                            draw = ImageDraw.Draw(im)
+                            if st.session_state[f"{server_path}_{visual_entity['person_id'][person_idx]}"]:
+                                draw.rectangle(
+                                    bbox)
+                                # Top left corner
+                                draw.text((bbox[0], bbox[1]),
+                                          f"ID: {visual_entity['person_id'][person_idx]}, Conf: {visual_entity['person_conf'][person_idx]}")
+                        break
 
                 # im.thumbnail((256, 256))
                 st.image(im)

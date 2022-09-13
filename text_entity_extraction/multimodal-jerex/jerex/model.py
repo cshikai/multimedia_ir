@@ -292,7 +292,7 @@ class JEREXModel(pl.LightningModule):
                     print("original_sentences_span: ",original_sentences_span)
 
                     original_sentences_span_spacy = original_sentences_spacy_tokens[mention[0]:mention[1]]
-                    original_sentences_span_spacy = ''.join([token.text_with_ws for token in original_sentences_span_spacy])
+                    original_sentences_span_spacy = ''.join(original_sentences_span_spacy)
 
                     print("original_sentences_span_spacy: ", original_sentences_span_spacy)
 

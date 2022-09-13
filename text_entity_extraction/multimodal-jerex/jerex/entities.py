@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 
 class RelationType:
@@ -428,7 +428,7 @@ class Relation:
 
 class Document:
     def __init__(self, doc_id: int, tokens: List[Token], sentences: List[Sentence],
-                 entities: List[Entity], relations: List[Relation], encoding: List[int], title: str, original_sentences):
+                 entities: List[Entity], relations: List[Relation], encoding: List[int], title: str, original_sentences: List[Dict]):
         self._doc_id = doc_id  # ID within the corresponding dataset
 
         self._sentences = sentences

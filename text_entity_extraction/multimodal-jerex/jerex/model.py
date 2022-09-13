@@ -231,14 +231,14 @@ class JEREXModel(pl.LightningModule):
 
         for doc_id, tokens, original_sentences, sentences, (_, mentions, clusters, entities, relations) in zip(batch['doc_ids'], batch['tokens'], batch['original_sentences'], batch['sentences'], predictions):
 
-            print("Doc ID: ", doc_id.item())
-            print("\n")
-            print("Entities: ", entities)
-            print("\n")
-            print("Clusters: ", clusters)
-            print("\n")
-            print("Relations: ", relations)
-            print("\n")
+            # print("Doc ID: ", doc_id.item())
+            # print("\n")
+            # print("Entities: ", entities)
+            # print("\n")
+            # print("Clusters: ", clusters)
+            # print("\n")
+            # print("Relations: ", relations)
+            # print("\n")
 
             original_sentences_tokens = [sentence['tokens']
                                          for sentence in original_sentences]
@@ -277,6 +277,8 @@ class JEREXModel(pl.LightningModule):
 
                     span = TreebankWordDetokenizer().detokenize(
                         tokens[mention[0]:mention[1]])
+                    span = span.replace(" - ", "-")
+                    span = re.sub(' +', ' ', span)
 
                     if span_start > 0:
                         offset = len("".join(
@@ -286,20 +288,30 @@ class JEREXModel(pl.LightningModule):
 
                         char_start = original_sentence.find(
                             span, offset)
+
+                        if char_start < 0:
+                            print("original sentence: ", original_sentence)
+                            print("offset: ", offset)
+                            print("span start: ", span_start)
+                            print("Uncaptured span: ", span)
+
                     else:
                         char_start = original_sentence.find(span)
+                        if char_start < 0:
+                            print("original sentence: ", original_sentence)
+                            print("Uncaptured span: ", span)
 
                     char_end = char_start + len(span)
                     char_spans.append(
                         (original_sent_idx, char_start, char_end))
 
-                    print("span: ", span, " span in orginal sentence: ",
-                          original_sentence[char_start:char_end])
+                    # print("span: ", span, " span in orginal sentence: ",
+                    #       original_sentence[char_start:char_end])
 
-                    print("span indexes: ",
-                          (original_sent_idx, char_start, char_end))
+                    # print("span indexes: ",
+                    #       (original_sent_idx, char_start, char_end))
 
-                    if char_end - char_start <= 0:
+                    if char_end - char_start <= 0 or char_start == -1:
                         empty_mention.append(mention_count)
                     mention_count += 1
 
@@ -353,7 +365,7 @@ class JEREXModel(pl.LightningModule):
 
             relations_output = [i for n, i in enumerate(
                 relations_output) if i not in relations_output[n + 1:]]
-            print(relations_output)
+            # print(relations_output)
 
             temp_df = pd.DataFrame(
                 columns=['doc_id', 'tokens', 'entities', 'relations'])

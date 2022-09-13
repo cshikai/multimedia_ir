@@ -107,13 +107,17 @@ class DocREDDataset(TorchDataset):
 
             num_tokens = 0
             for sent in str_sents:
+                print(sent)
+                print("new sentence")
                 tokens = list(nlp.tokenizer(sent.text))
+                original_tokens = list(nlp.tokenizer(sent.text))
                 tokens = [token.text for token in tokens]
 
                 if len(tokens) > 0:
                     num_tokens += len(tokens)
                     sentence = {}
                     sentence['tokens'] = tokens
+                    sentence['original_tokens'] = original_tokens
                     sentence['sentence'] = sent.text
                     sentences.append(sentence)
 

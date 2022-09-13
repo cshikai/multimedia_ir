@@ -240,10 +240,15 @@ class JEREXModel(pl.LightningModule):
             # print("Relations: ", relations)
             # print("\n")
 
-            original_sentences_tokens = [sentence['tokens']
-                                         for sentence in original_sentences]
+            original_sentences_tokens = []
             original_sentences_strings = [sentence['sentence']
                                           for sentence in original_sentences]
+            
+            original_sentences_spacy_tokens = []
+
+            for sentence in original_sentences:
+                original_sentences_spacy_tokens.extend(sentence['original_tokens'])
+                original_sentences_tokens.extend(sentence['tokens'])
 
             sentence_count = 0
             cum_len = 0
@@ -279,6 +284,25 @@ class JEREXModel(pl.LightningModule):
                         tokens[mention[0]:mention[1]])
                     span = span.replace(" - ", "-")
                     span = re.sub(' +', ' ', span)
+
+                    print("span: ", span) 
+
+                    original_sentences_span = original_sentences_tokens[mention[0]:mention[1]]
+
+                    print("original_sentences_span: ",original_sentences_span)
+
+                    original_sentences_span_spacy = original_sentences_spacy_tokens[mention[0]:mention[1]]
+                    original_sentences_span_spacy = ''.join([token.text_with_ws for token in original_sentences_span_spacy])
+
+                    print("original_sentences_span_spacy: ", original_sentences_span_spacy)
+
+                    char_start = original_sentence.find(original_sentences_span_spacy)
+                    char_end = char_start + len(original_sentences_span_spacy)
+
+                    print("original_sent_idx, char_start, char_end: ", original_sent_idx, char_start, char_end)
+
+                    print("span: ", original_sentences_span_spacy, " span in orginal sentence: ",
+                          original_sentence[char_start:char_end])
 
                     if span_start > 0:
                         offset = len("".join(

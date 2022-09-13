@@ -7,6 +7,9 @@ ELASTICSEARCH:
   ELASTIC_USERNAME: elastic
   ELASTIC_PASSWORD: changeme
 
+ARTICLES:
+  INDEX_NAME: 'documents_m2e2'
+
 MAPPING:
   mappings:
     properties:

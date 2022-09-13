@@ -10,7 +10,7 @@ def read_yaml(file_path='config.yaml'):
 config = read_yaml()
 
 ELASTIC_URL = config['ELASTICSEARCH']['URL']
-INDEX_NAME = 'documents'
+INDEX_NAME = config['ARTICLES']['INDEX_NAME']
 ELASTIC_USERNAME = config['ELASTICSEARCH']['ELASTIC_USERNAME']
 ELASTIC_PASSWORD = config['ELASTICSEARCH']['ELASTIC_PASSWORD']
 

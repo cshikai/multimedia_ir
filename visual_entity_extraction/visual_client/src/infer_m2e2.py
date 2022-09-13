@@ -7,7 +7,7 @@ import os
 from elasticsearch import Elasticsearch
 
 
-def read_yaml(file_path='config_f1.yaml'):
+def read_yaml(file_path='config_m2e2.yaml'):
     with open(file_path, "r") as f:
         return yaml.safe_load(f)
 
@@ -34,7 +34,7 @@ if __name__ == '__main__':
         for img_file in os.listdir(img_folder+'/'+subfolder):
             detection_dict = {}
             file_index = img_file.split('_')[1].split('.')[0]
-            file_key = '/images/f1/{}/{}.h5'.format(subfolder, file_index)
+            file_key = '/images/m2e2/{}/{}.h5'.format(subfolder, file_index)
             with open(img_folder+'/'+subfolder+'/'+img_file, "rb") as f:
                 im_bytes = f.read()
             im_b64 = base64.b64encode(im_bytes).decode("utf8")

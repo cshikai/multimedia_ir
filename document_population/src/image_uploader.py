@@ -6,25 +6,31 @@ import os
 from PIL import Image
 import numpy as np
 
+
 class F1ImageUploader:
     def __init__(self):
         self.server_address = 'image_server'
         self.image_root = '/images'
-        self.prefix = 'f1'
-        self.source_root = '/data/images'
-    def upload_single_image(self,filename):
-        full_name = os.path.join(self.source_root,filename+'.jpg')
-        image =   np.asarray(Image.open(full_name)).tolist()
-        
-        body = {
-                'filename': filename,
-                'image': image
-                }
+        self.prefix = 'm2e2'
+        self.source_root = '/data/images_m2e2'
 
+    def upload_single_image(self, filename):
+
+        # full_name = os.path.join(self.source_root,filename+'.jpg')
+        full_name = os.path.join(self.source_root, filename)
+        print(full_name)
+
+        image = np.asarray(Image.open(full_name).convert('RGB')).tolist()
+
+        body = {
+            'filename': filename.strip('.jpg'),
+            'image': image
+        }
+        print("Body:", body['filename'], len(body['image']))
         # print(image)
         # body = {'filename':'a_0','image': [[1,2],[1,2]]}
         r = requests.put(
-        'http://image_server:8000/upload/', json=body)
+            'http://image_server:8000/upload/', json=body)
 
         return r.json()['server_path']
 

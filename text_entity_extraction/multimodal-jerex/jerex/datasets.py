@@ -1,5 +1,5 @@
 import json
-from sys import orig_argv
+# from sys import orig_argv
 import pandas as pd
 from collections import OrderedDict
 import re
@@ -108,11 +108,10 @@ class DocREDDataset(TorchDataset):
 
             num_tokens = 0
             for sent in str_sents:
-                print(sent)
-                print("new sentence")
                 tokens = list(nlp.tokenizer(sent.text))
                 original_tokens = list(nlp.tokenizer(sent.text))
-                original_tokens = [token.text_with_ws for token in original_tokens]
+                original_tokens = [
+                    token.text_with_ws for token in original_tokens]
                 tokens = [token.text for token in tokens]
 
                 if len(tokens) > 0:

@@ -243,12 +243,15 @@ class JEREXModel(pl.LightningModule):
             original_sentences_tokens = []
             original_sentences_strings = [sentence['sentence']
                                           for sentence in original_sentences]
-            
+            original_tokenized_sentences = []
+
             original_sentences_spacy_tokens = []
 
             for sentence in original_sentences:
-                original_sentences_spacy_tokens.extend(sentence['original_tokens'])
+                original_sentences_spacy_tokens.extend(
+                    sentence['original_tokens'])
                 original_sentences_tokens.extend(sentence['tokens'])
+                original_tokenized_sentences.append(sentence['tokens'])
 
             sentence_count = 0
             cum_len = 0
@@ -277,7 +280,8 @@ class JEREXModel(pl.LightningModule):
                         length) for length in rolling_length if span_start < length][0]
                     sent = sentences[sent_idx]
 
-                    original_sent_idx = original_sentences_tokens.index(sent)
+                    original_sent_idx = original_tokenized_sentences.index(
+                        sent)
                     original_sentence = original_sentences_strings[original_sent_idx]
 
                     span = TreebankWordDetokenizer().detokenize(
@@ -285,21 +289,26 @@ class JEREXModel(pl.LightningModule):
                     span = span.replace(" - ", "-")
                     span = re.sub(' +', ' ', span)
 
-                    print("span: ", span) 
+                    print("span: ", span)
 
                     original_sentences_span = original_sentences_tokens[mention[0]:mention[1]]
 
-                    print("original_sentences_span: ",original_sentences_span)
+                    print("original_sentences_span: ", original_sentences_span)
 
-                    original_sentences_span_spacy = original_sentences_spacy_tokens[mention[0]:mention[1]]
-                    original_sentences_span_spacy = ''.join(original_sentences_span_spacy)
+                    original_sentences_span_spacy = original_sentences_spacy_tokens[
+                        mention[0]:mention[1]]
+                    original_sentences_span_spacy = ''.join(
+                        original_sentences_span_spacy)
 
-                    print("original_sentences_span_spacy: ", original_sentences_span_spacy)
+                    print("original_sentences_span_spacy: ",
+                          original_sentences_span_spacy)
 
-                    char_start = original_sentence.find(original_sentences_span_spacy)
+                    char_start = original_sentence.find(
+                        original_sentences_span_spacy)
                     char_end = char_start + len(original_sentences_span_spacy)
 
-                    print("original_sent_idx, char_start, char_end: ", original_sent_idx, char_start, char_end)
+                    print("original_sent_idx, char_start, char_end: ",
+                          original_sent_idx, char_start, char_end)
 
                     print("span: ", original_sentences_span_spacy, " span in orginal sentence: ",
                           original_sentence[char_start:char_end])

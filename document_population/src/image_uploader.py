@@ -1,5 +1,5 @@
 
-
+import base64
 from http import server
 import requests
 import os
@@ -25,6 +25,28 @@ class F1ImageUploader:
         body = {
             'filename': filename.strip('.jpg'),
             'image': image
+        }
+        print("Body:", body['filename'], len(body['image']))
+        # print(image)
+        # body = {'filename':'a_0','image': [[1,2],[1,2]]}
+        r = requests.put(
+            'http://image_server:8000/upload/', json=body)
+
+        return r.json()['server_path']
+    
+    def upload_single_image_b64(self, filename):
+
+        # full_name = os.path.join(self.source_root,filename+'.jpg')
+        full_name = os.path.join(self.source_root, filename)
+        print(full_name)
+
+        with open(full_name, "rb") as f:
+            im_bytes = f.read()
+        im_b64 = base64.b64encode(im_bytes).decode("utf8")
+
+        body = {
+            'filename': filename.strip('.jpg'),
+            'image': im_b64
         }
         print("Body:", body['filename'], len(body['image']))
         # print(image)

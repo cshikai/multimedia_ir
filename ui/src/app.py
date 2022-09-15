@@ -2,6 +2,8 @@
 import streamlit as st
 import numpy as np
 import os
+import io
+import base64
 import requests
 import re
 from typing import List, Dict, Tuple
@@ -98,7 +100,6 @@ def generate_hypertext(text_entities: List[Dict], body: str):
         if entity["mention"] != " " and entity['entity_link'] != "Unknown":
             # Workaround for closing in entity mention
             mention = entity['mention'].replace(')', '\)')
-            print(hypertext, mention)
             hypertext = re.sub(
                 fr"\b{mention}\b", f"<a href='?entity={entity['entity_link']}' target='_self'>{entity['mention']}</a>", hypertext)
     return hypertext
@@ -140,9 +141,10 @@ def search_reports(query: str, start_date=None, end_date=None) -> List[Report]:
         id = doc['_source']['ID']
         title = doc['_id']
         body = doc['_source']['content']
-        geo_data = doc['_source']['geo_data']
+        geo_data = doc['_source']['geo_data'] if 'geo_data' in doc['_source'] else []
         timestamp = doc['_source']['timestamp']
-        text_entities = doc['_source']['text_entities']
+        text_entities = doc['_source']['text_entities'] if 'text_entities' in doc['_source'] else [
+        ]
         visual_entities = res['hits']['hits'][0]['_source']['visual_entities'] if res['hits']['hits'][0]['_source']['images'] else []
         result = Report(id=id, title=title, body=body,
                         geo_data=geo_data, timestamp=timestamp, text_entities=text_entities, visual_entities=visual_entities)
@@ -252,7 +254,7 @@ if st.session_state['search']:
                 visual_entities = [entity['person_id']
                                    for entity in report.visual_entities]
                 visual_entities = [
-                    person_id for person_ids in visual_entities for person_id in person_ids if person_id != -1]
+                    person_id for person_ids in visual_entities for person_id in person_ids if person_id != "-1"]
                 entities.update(visual_entities)
                 for location in report.geo_data:
                     geo_entities[(location['entity_name'], location['latitude'], location['longitude'])].append(
@@ -372,7 +374,9 @@ elif st.session_state['report']:
             st.markdown("""---""")
 
             for server_path, image in report.images.items():
-                im = Image.fromarray(np.asarray(image).astype(np.uint8))
+                img_bytes = base64.b64decode(image.encode('utf-8'))
+                im = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+                # im = Image.fromarray(np.asarray(image).astype(np.uint8))
                 for visual_entity in report.visual_entities:
                     if visual_entity["file_name"] != server_path:
                         continue
@@ -388,6 +392,7 @@ elif st.session_state['report']:
                             if st.session_state[f"{server_path}_{visual_entity['person_id'][person_idx]}"]:
                                 draw.rectangle(
                                     bbox)
+                                print(bbox)
                                 # Top left corner
                                 draw.text((bbox[0], bbox[1]),
                                           f"{get_entity_name(visual_entity['person_id'][person_idx])}, Conf: {visual_entity['person_conf'][person_idx]}")

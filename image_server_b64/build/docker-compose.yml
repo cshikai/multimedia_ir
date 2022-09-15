@@ -1,0 +1,17 @@
+version: '3.4'
+
+services:
+  image_server:
+    build: ../
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../src:/src
+      - ../images:/images
+    # ports:
+    #   - 8888:8880
+    command: uvicorn main:api --host 0.0.0.0
+    restart: always
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb # set upper limit for how much shared memory container can use

@@ -1,0 +1,4 @@
+pandas==1.4.2
+h5py==3.7.0
+uvicorn==0.17.6
+fastapi==0.77.1

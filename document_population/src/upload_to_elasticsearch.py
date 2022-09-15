@@ -34,7 +34,7 @@ for idx, row in tqdm(df.iterrows(), total=len(df)):
 
     for image_filename in row['images']:
 
-        server_path = uploader.upload_single_image(image_filename)
+        server_path = uploader.upload_single_image_b64(image_filename)
         server_paths.append(server_path)
 
     # doc['meta'] = {'ID': row['doc_ID'], 'query': row['query'], 'link': row['link'],

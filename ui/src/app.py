@@ -2,6 +2,8 @@
 import streamlit as st
 import numpy as np
 import os
+import io
+import base64
 import requests
 import re
 from typing import List, Dict, Tuple
@@ -372,7 +374,9 @@ elif st.session_state['report']:
             st.markdown("""---""")
 
             for server_path, image in report.images.items():
-                im = Image.fromarray(np.asarray(image).astype(np.uint8))
+                img_bytes = base64.b64decode(image.encode('utf-8'))
+                im = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+                # im = Image.fromarray(np.asarray(image).astype(np.uint8))
                 for visual_entity in report.visual_entities:
                     if visual_entity["file_name"] != server_path:
                         continue

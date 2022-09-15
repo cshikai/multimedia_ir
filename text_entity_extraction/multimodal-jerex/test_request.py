@@ -182,8 +182,8 @@ if __name__ == '__main__':
     # print("relations: ")
     # print(jerex_infered.info())
 
-    # jerex_infered = jerex_results[jerex_results.entities != '[]']
-    jerex_infered = jerex_results
+    jerex_infered = jerex_results[jerex_results.entities != '[]']
+    # jerex_infered = jerex_results
     print("entities: ")
     print(jerex_infered.info())
 
@@ -259,7 +259,17 @@ if __name__ == '__main__':
 
     print(entities_df.head())
 
-    results_df = pd.merge(articles_df, entities_df, on=["ID"])
+    results_df = pd.merge(articles_df, entities_df, how="left", on=["ID"])
+
+    template_mention = dict()
+    template_mention['mention'] = ""
+    template_mention['mention_type'] = ""
+    template_mention['mention_span'] = []
+    template_mention['entity_link'] = ""
+    template_mention['entity_name'] = ""
+    template_entity = [mention]
+
+    results_df = results_df.fillna(value={"identified_entities": []})
 
     print(results_df.info())
     results_df.to_csv("data/jerex_plus_blink.csv", index=False)

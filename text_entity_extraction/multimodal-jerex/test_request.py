@@ -12,13 +12,7 @@ from haystack.document_stores import ElasticsearchDocumentStore
 
 def predict_jerex(dataset: Dict):
     response = requests.post('http://0.0.0.0:8080/df_link', json=dataset)
-
-    # ipdb.set_trace()
-    # print([doc for doc in response.iter_lines()])
     response = response.json()
-    # print(type(response))
-    # df_json = json.loads(response)
-    # print(type(df_json))
     df = pd.json_normalize(response, max_level=0)
 
     print(df.head())
@@ -32,11 +26,6 @@ def predict_jerex(dataset: Dict):
 def predict_blink(dataset: Dict):
 
     response = requests.post('http://blink:5050/df_link', json=dataset)
-    # df_json = json.dumps(response.json())
-    # df = pd.read_json(df_json, orient="records")
-
-    # print(df.head())
-    # print(df.info())
 
     df = pd.json_normalize(response.json(), max_level=0)
 
@@ -183,21 +172,6 @@ if __name__ == '__main__':
     print(articles_df.head())
     # articles_df = articles_df[:10]
 
-    # new_entities = [{"text": " The COVID-19 recession is a global economic recession caused by the COVID-19 pandemic. The recession began in most countries in February 2020. After a year of global economic slowdown that saw stagnation of economic growth and consumer activity, the COVID-19 lockdowns and other precautions taken in early 2020 drove the global economy into crisis. Within seven months, every advanced economy had fallen to recession. The first major sign of recession was the 2020 stock market crash, which saw major indices drop 20 to 30%% in late February and March. Recovery began in early April 2020, as of April 2022, the GDP for most major economies has either returned to or exceeded pre-pandemic levels and many market indices recovered or even set new records by late 2020. ", "idx": "https://en.wikipedia.org/wiki?curid=63462234", "title": "COVID-19 recession", "entity": "COVID-19 recession"},
-    #  {"text": " The COVID-19 pandemic, also known as the coronavirus pandemic, is an ongoing global pandemic of coronavirus disease 2019 (COVID-19) caused by severe acute respiratory syndrome coronavirus 2 (SARS-CoV-2). The novel virus was first identified from an outbreak in Wuhan, China, in December 2019. Attempts to contain it there failed, allowing the virus to spread worldwide. The World Health Organization (WHO) declared a Public Health Emergency of International Concern on 30 January 2020 and a pandemic on 11 March 2020. As of 15 April 2022, the pandemic had caused more than 502 million cases and 6.19 million deaths, making it one of the deadliest in history. ", "idx": "https://en.wikipedia.org/wiki?curid=62750956", "title": "COVID-19 pandemic", "entity": "COVID-19 pandemic"},
-    #  {"text": "Coronavirus disease 2019 (COVID-19) is a contagious disease caused by a virus, the severe acute respiratory syndrome coronavirus 2 (SARS-CoV-2). The first known case was identified in Wuhan, China, in December 2019.[7] The disease quickly spread worldwide, resulting in the COVID-19 pandemic.\
-    #   Symptoms of COVID‑19 are variable, but often include fever,[8] cough, headache,[9] fatigue, breathing difficulties, loss of smell, and loss of taste.[10][11][12] Symptoms may begin one to fourteen days after exposure to the virus. At least a third of people who are infected do not develop noticeable symptoms.\
-    #   [13] Of those people who develop symptoms noticeable enough to be classed as patients, most (81%) develop mild to moderate symptoms (up to mild pneumonia), while 14% develop severe symptoms (dyspnoea, hypoxia, or more than 50%% lung involvement on imaging), and 5%% develop critical symptoms (respiratory failure, \
-    #   shock, or multiorgan dysfunction).[14] Older people are at a higher risk of developing severe symptoms. Some people continue to experience a range of effects (long COVID) for months after recovery, and damage to organs has been observed.[15] Multi-year studies are underway to further investigate the long-term effects of the disease.[15] \
-    #   COVID‑19 transmits when people breathe air contaminated by droplets and small airborne particles containing the virus. The risk of breathing these is highest when people are in close proximity, but they can be inhaled over longer distances, particularly indoors. Transmission can also occur if splashed or sprayed with contaminated fluids in the eyes, \
-    #   nose or mouth, and, rarely, via contaminated surfaces. People remain contagious for up to 20 days, and can spread the virus even if they do not develop symptoms.[16][17] \
-    #   COVID-19 testing methods to detect the virus's nucleic acid include real-time reverse transcription polymerase chain reaction (rRT‑PCR),[18][19] transcription-mediated amplification,[18][19][20] and reverse transcription loop-mediated isothermal amplification (RT‑LAMP)[18][19] from a nasopharyngeal swab.[21]Several COVID-19 vaccines have been approved \
-    #   and distributed in various countries, which have initiated mass vaccination campaigns. Other preventive measures include physical or social distancing, quarantining, ventilation of indoor spaces, covering coughs and sneezes, hand washing, and keeping unwashed hands away from the face. The use of face masks or coverings has been recommended in public settings to minimise the risk of transmission. While work is underway to develop drugs that inhibit the virus, the primary treatment is symptomatic. Management involves the treatment of symptoms, supportive care, isolation, and experimental measures.", "idx": "https://en.wikipedia.org/wiki?curid=63030231", "title": "COVID-19", "entity": "COVID-19"}]
-
-    # df_json = json.dumps(new_entities)
-    # df_json = json.loads(df_json)
-    # response = requests.post('http://0.0.0.0:5050/add_entities', json = df_json)
-
     df_json = articles_df.to_json(orient="records")
     df_json = json.loads(df_json)
     jerex_results = predict_jerex(df_json)
@@ -208,7 +182,8 @@ if __name__ == '__main__':
     # print("relations: ")
     # print(jerex_infered.info())
 
-    jerex_infered = jerex_results[jerex_results.entities != '[]']
+    # jerex_infered = jerex_results[jerex_results.entities != '[]']
+    jerex_infered = jerex_results
     print("entities: ")
     print(jerex_infered.info())
 

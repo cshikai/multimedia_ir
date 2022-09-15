@@ -7,7 +7,7 @@ import base64
 import requests
 import re
 from typing import List, Dict, Tuple
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from collections import Counter
 from collections import defaultdict
 from elasticsearch import Elasticsearch
@@ -97,7 +97,7 @@ def generate_hypertext(text_entities: List[Dict], body: str):
     sorted_entities = sorted(
         text_entities, key=lambda entity: len(entity['mention']), reverse=True)
     for entity in sorted_entities:
-        if entity["mention"] != " " and entity['entity_link'] != "Unknown":
+        if entity["mention"] != " " and entity['entity_link'] != -1:
             # Workaround for closing in entity mention
             mention = entity['mention'].replace(')', '\)')
             hypertext = re.sub(
@@ -392,10 +392,9 @@ elif st.session_state['report']:
                             if st.session_state[f"{server_path}_{visual_entity['person_id'][person_idx]}"]:
                                 draw.rectangle(
                                     bbox)
-                                print(bbox)
                                 # Top left corner
                                 draw.text((bbox[0], bbox[1]),
-                                          f"{get_entity_name(visual_entity['person_id'][person_idx])}, Conf: {visual_entity['person_conf'][person_idx]}")
+                                          f"{get_entity_name(visual_entity['person_id'][person_idx])}, Conf: {visual_entity['person_conf'][person_idx]}", font=ImageFont.truetype("DejaVuSans.ttf", 12))
                         break
 
                 # im.thumbnail((256, 256))

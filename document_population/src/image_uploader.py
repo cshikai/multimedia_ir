@@ -33,7 +33,7 @@ class F1ImageUploader:
             'http://image_server:8000/upload/', json=body)
 
         return r.json()['server_path']
-    
+
     def upload_single_image_b64(self, filename):
 
         # full_name = os.path.join(self.source_root,filename+'.jpg')

@@ -18,7 +18,7 @@ api = FastAPI(
 class ImageData(BaseModel):
 
     filename: str
-    image: List[List[List[int]]]
+    image: str
 
 
 class ImageMetaData(BaseModel):
@@ -28,14 +28,11 @@ class ImageMetaData(BaseModel):
 
 @api.put("/upload/")
 def upload_image(image_data: ImageData):
-
     image_data = image_data.dict()
     writer = M2E2ImageWriter()
     # writer = F1ImageWriter()
-
     response = {}
     try:
-
         response['server_path'] = writer.write_single_image(
             image_data['filename'], image_data['image'])
     except:
@@ -69,7 +66,7 @@ class M2E2ImageWriter:
 
     def _b64_reader():
         print("Do something")
-    
+
     def _b64_writer():
         print("Do something")
 
@@ -90,7 +87,7 @@ class M2E2ImageWriter:
             dt = h5py.special_dtype(vlen=str)
             _dataset = file.create_dataset(
                 "image", len(image), dtype=dt)
-            _dataset.attrs["img"]=image
+            _dataset.attrs["img"] = image
 
             file.close()
             return file_path

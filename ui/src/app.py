@@ -29,13 +29,14 @@ es = Elasticsearch(ELASTIC_URL,
 
 
 class Report:
-    def __init__(self, id, title="", body="", date="", text_entities=[], images={}, visual_entities=[], geo_data=[], timestamp=""):
+    def __init__(self, id, title="", body="", date="", text_entities=[], images={}, image_captions=[], visual_entities=[], geo_data=[], timestamp=""):
         self.id = id
         self.title = title
         self.body = body
         self.date = date
         self.text_entities = text_entities
         self.images = images
+        self.image_captions = image_captions
         self.visual_entities = visual_entities
         self.geo_data = geo_data
         self.timestamp = timestamp
@@ -165,12 +166,14 @@ def get_report(id: int) -> Report:
     text_entities = res['hits']['hits'][0]['_source']['text_entities']
     hypertext = generate_hypertext(text_entities, body)
     images = {}
-    for server_path in res['hits']['hits'][0]['_source']['images']:
+    image_captions = {}
+    for idx, server_path in enumerate(res['hits']['hits'][0]['_source']['images']):
         images[server_path] = get_image(server_path)
+        image_captions[server_path] = res['hits']['hits'][0]['_source']['image_captions'][idx]
     visual_entities = res['hits']['hits'][0]['_source']['visual_entities'] if images else [
     ]
     result = Report(id=res['hits']['hits'][0]['_source']['ID'],
-                    title=res['hits']['hits'][0]['_id'], body=hypertext, images=images, visual_entities=visual_entities)
+                    title=res['hits']['hits'][0]['_id'], body=hypertext, images=images, visual_entities=visual_entities, image_captions=image_captions)
     return result
 
 
@@ -201,7 +204,7 @@ st.info('Elasticsearch ID temporarily displayed as report title until title is p
 
 # Search Bar
 inp = st.text_input(label='Search', key='searchbar',
-                    value=st.session_state['search'], placeholder='Lewis Hamilton')
+                    value=st.session_state['search'], placeholder='Donald Trump')
 reports = None
 
 if inp != "":
@@ -396,9 +399,9 @@ elif st.session_state['report']:
                                 draw.text((bbox[0], bbox[1]),
                                           f"{get_entity_name(visual_entity['person_id'][person_idx])}, Conf: {visual_entity['person_conf'][person_idx]}", font=ImageFont.truetype("DejaVuSans.ttf", 12))
                         break
-
                 # im.thumbnail((256, 256))
                 st.image(im)
+                st.write(report.image_captions[server_path])
                 st.markdown("***")  # Line Break
 
     with col2:

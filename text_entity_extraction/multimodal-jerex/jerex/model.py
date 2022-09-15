@@ -313,28 +313,28 @@ class JEREXModel(pl.LightningModule):
                     print("span: ", original_sentences_span_spacy, " span in orginal sentence: ",
                           original_sentence[char_start:char_end])
 
-                    if span_start > 0:
-                        offset = len("".join(
-                            sent[:span_start-rolling_length[sent_idx]]))-1
+                    # if span_start > 0:
+                    #     offset = len("".join(
+                    #         sent[:span_start-rolling_length[sent_idx]]))-1
 
-                        offset = offset if offset > 0 else 0
+                    #     offset = offset if offset > 0 else 0
 
-                        char_start = original_sentence.find(
-                            span, offset)
+                    #     char_start = original_sentence.find(
+                    #         span, offset)
 
-                        if char_start < 0:
-                            print("original sentence: ", original_sentence)
-                            print("offset: ", offset)
-                            print("span start: ", span_start)
-                            print("Uncaptured span: ", span)
+                    #     if char_start < 0:
+                    #         print("original sentence: ", original_sentence)
+                    #         print("offset: ", offset)
+                    #         print("span start: ", span_start)
+                    #         print("Uncaptured span: ", span)
 
-                    else:
-                        char_start = original_sentence.find(span)
-                        if char_start < 0:
-                            print("original sentence: ", original_sentence)
-                            print("Uncaptured span: ", span)
+                    # else:
+                    #     char_start = original_sentence.find(span)
+                    #     if char_start < 0:
+                    #         print("original sentence: ", original_sentence)
+                    #         print("Uncaptured span: ", span)
 
-                    char_end = char_start + len(span)
+                    # char_end = char_start + len(span)
                     char_spans.append(
                         (original_sent_idx, char_start, char_end))
 

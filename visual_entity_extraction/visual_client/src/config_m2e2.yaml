@@ -1,5 +1,5 @@
 infer:
-  img_folder: '../data/images'
+  img_folder: '../data/images_m2e2'
 
 endpt:
   fn_endpt: http://faceid:8000

@@ -7,13 +7,14 @@ import sqlite3
 from inference_api.common.inference.manager import InferenceManager
 
 
-from .data_reader import VADataReader
+from .data_reader import VALiveDataReader
 from .data_writer import VADataWriter
 from .data_process.processor import VAProcessor
 
 
 from .triton_config.config import cfg as triton_cfg
 from triton.dummy_triton_manager import DummyTritonManager
+
 
 class VAManager(InferenceManager):
 
@@ -23,7 +24,7 @@ class VAManager(InferenceManager):
 
         self.triton_manager = DummyTritonManager()
         self.writer = VADataWriter()
-        self.reader = VADataReader()
+        self.reader = VALiveDataReader()
         self.processor = VAProcessor()
 
     def get_heatmap(self, indexes):
@@ -34,23 +35,19 @@ class VAManager(InferenceManager):
 
         # text, image = self.reader.read(indexes)
 
-            # self.logger.info('{} - Specific Date All Tracks Only : Classifying {} Tracks on Date {}'.format(
-            #     datetime.now(), len(track_ids), date))
+        # self.logger.info('{} - Specific Date All Tracks Only : Classifying {} Tracks on Date {}'.format(
+        #     datetime.now(), len(track_ids), date))
 
-            # self.log_db_manager.update_job(primary_key, 1)
-
-            
+        # self.log_db_manager.update_job(primary_key, 1)
 
         self.infer(indexes)
-                # self.log_db_manager.update_job(primary_key, 2)
+        # self.log_db_manager.update_job(primary_key, 2)
 
-            # except:
-            #     self.log_db_manager.update_job(primary_key, 3)
+        # except:
+        #     self.log_db_manager.update_job(primary_key, 3)
         # else:
         #     self.logger.info('{} - Batch Classification Attempted on Date {} but was already executed, skipping.'.format(
         #         datetime.now(), date))
-
-   
 
     # def classify_unclassed_tracks_on_latest_date(self):
 
@@ -74,4 +71,3 @@ class VAManager(InferenceManager):
     #     for date in dates:
     #         self.classify_unclassed_tracks_on_date(date)
 #####################################################################
-

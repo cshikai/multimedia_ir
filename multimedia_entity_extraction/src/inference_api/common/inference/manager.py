@@ -51,15 +51,15 @@ class InferenceManager(ABC):
                 batch_data[key] = batch_data.get(key, []) + [value]
 
             if data_count == self.triton_manager.triton_cfg['max_batch']:
-                
+
                 self._infer_single_batch(batch_data)
                 data_count = 0
-
 
         if data_count:
             self._infer_single_batch(batch_data)
 
-        self.writer.write(**self.output)
+        if self.output:
+            self.writer.write(**self.output)
 
         return self.output
 
@@ -86,6 +86,5 @@ class InferenceManager(ABC):
         batch_postprocessed_output = self.processor.postprocess_from_triton(
             batch_output_data, metadata)
 
-        
         for key, value in batch_postprocessed_output.items():
             self.output[key] = self.output.get(key, []) + value

@@ -1,6 +1,6 @@
 crawl:
   entity_file: 'articles_entity_linked (-3).csv'
-  save_path: '../../data/source_data'
+  save_path: '../../data/m2e2_data'
   
 infer:
   img_file: 'img.png'

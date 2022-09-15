@@ -131,9 +131,10 @@ def search_reports(query: str, start_date=None, end_date=None) -> List[Report]:
             "range": {"timestamp": {"gte": start_date, "lte": end_date}}}
 
     if query == "*":
-        res = es.search(index="documents", query={"match_all": {}}, size=10000)
+        res = es.search(index="documents_m2e2", query={
+                        "match_all": {}}, size=10000)
     else:
-        res = es.search(index="documents", query=es_query, size=20)
+        res = es.search(index="documents_m2e2", query=es_query, size=20)
     results = []
     for doc in res['hits']['hits']:
         id = doc['_source']['ID']
@@ -157,7 +158,7 @@ def get_report(id: int) -> Report:
     # <br>
     # The two drivers joined the grid full-time within half a year of one another and until recently were fierce rivals on the track. But as the distance separating the pair on the grid has grown, more common ground has been discovered with Hamilton describing the four-time champion as a 'powerful ally' in his battle against racism and social injustice. Vettel has backed numerous environmental causes this year, including wearing a shirt in Miami warning of the event would be the "first underwater grand prix" if climate change is not addressed now.  “Over time, we have started to see one another taking those brave steps and standing out for things that we believe in and have been able to support each other," said Hamilton.  "He has been so supportive to me and I like to think I have supported him also and have come to realise that we have a lot more in common than just the driving passion.  “So it is really me and him that have been stepping out into the uncomfortable light and trying to do something with the platform that we have.  “And that is for me why he is very much unlike any of the drivers that have been here past and present.” Vettel a "great all-round competitor"  Vettel finished in the top five of the drivers' championship for 11 consecutive seasons from 2009 to 2019 but has since failed to place in the top 10.  Asked how the pair's relationship has evolved over the years, Hamilton said: “The racing part of things, he was just incredibly quick.  "He was very, very intelligent, a very good engineer, I think, and just very, very precise on track.  “He was just a great all-around competitor, very fair but also very strong and firm on track.  “He has never been someone to blame other people for mistakes, he would always put his hand up and say it was his fault which I always thought was honourable.  “Naturally, when you are focused on winning championships and stuff, when we were younger, we didn’t have time to stop and talk about what we do in our own personal lives and the things that we cared about."
     # """
-    res = es.search(index="documents", query={"term": {"ID": id}})
+    res = es.search(index="documents_m2e2", query={"term": {"ID": id}})
     body = res['hits']['hits'][0]['_source']['content']
     text_entities = res['hits']['hits'][0]['_source']['text_entities']
     hypertext = generate_hypertext(text_entities, body)

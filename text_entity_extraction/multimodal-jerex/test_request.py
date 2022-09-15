@@ -177,6 +177,8 @@ if __name__ == '__main__':
         articles_df.index = articles_df.index + 1  # shifting index
         articles_df = articles_df.sort_index()  # sorting by index
 
+    # articles_df = pd.read_csv(
+    #     'data/m2e2.csv')
     print(articles_df.info())
     print(articles_df.head())
     # articles_df = articles_df[:10]
@@ -206,92 +208,92 @@ if __name__ == '__main__':
     # print("relations: ")
     # print(jerex_infered.info())
 
-    # jerex_infered = jerex_results[jerex_results.entities != '[]']
-    # print("entities: ")
-    # print(jerex_infered.info())
+    jerex_infered = jerex_results[jerex_results.entities != '[]']
+    print("entities: ")
+    print(jerex_infered.info())
 
-    # count = 0
-    # for idx, row in jerex_infered.iterrows():
-    #     if type(row['entities']) == str:
-    #         entities = ast.literal_eval(row['entities'])
-    #     else:
-    #         entities = row['entities']
+    count = 0
+    for idx, row in jerex_infered.iterrows():
+        if type(row['entities']) == str:
+            entities = ast.literal_eval(row['entities'])
+        else:
+            entities = row['entities']
 
-    #     for entity_row in entities:
-    #         count += len(entity_row)
+        for entity_row in entities:
+            count += len(entity_row)
 
-    # print("total number of entities: ", count)
-    # print("Avg count of entities: ", count/len(jerex_infered))
+    print("total number of entities: ", count)
+    print("Avg count of entities: ", count/len(jerex_infered))
 
-    # entity_linking_df = generate_entity_linking_df_entities(jerex_results)
-    # entity_linking_df = entity_linking_df[entity_linking_df.mention_type != 'TIME']
-    # entity_linking_df = entity_linking_df[entity_linking_df.mention_type != 'NUM']
+    entity_linking_df = generate_entity_linking_df_entities(jerex_results)
+    entity_linking_df = entity_linking_df[entity_linking_df.mention_type != 'TIME']
+    entity_linking_df = entity_linking_df[entity_linking_df.mention_type != 'NUM']
     # print(entity_linking_df.info())
 
     # # entity_linking_df = pd.read_csv('data/articles_entity_linked.csv')
     # # entity_linking_df = entity_linking_df[entity_linking_df.entity_names != 'Unknown']
     # # print(entity_linking_df.info())
 
-    # print(entity_linking_df)
-    # entity_linking_df.to_csv("data/entity_linking_df.csv", index=False)
+    print(entity_linking_df)
+    entity_linking_df.to_csv("data/entity_linking_df.csv", index=False)
     # # entity_linking_df = pd.read_csv('/home/shearman/Desktop/work/BLINK_es/data/entity_linking_df.csv')
     # # entity_linking_df =entity_linking_df.iloc[:10,:]
 
-    # df_json = entity_linking_df.to_json(orient="records")
-    # df_json = json.loads(df_json)
+    df_json = entity_linking_df.to_json(orient="records")
+    df_json = json.loads(df_json)
 
-    # blink_results = predict_blink(df_json)
+    blink_results = predict_blink(df_json)
 
-    # blink_results = pd.read_csv('data/articles_entity_linked.csv')
-    # blink_results = blink_results[blink_results['mention'].notna()]
-    # blink_results.loc[blink_results["entity_link"]
-    #                   == "Unknown", "entity_link"] = -1
-    # blink_results["entity_link"] = pd.to_numeric(blink_results["entity_link"])
+    blink_results = pd.read_csv('data/articles_entity_linked.csv')
+    blink_results = blink_results[blink_results['mention'].notna()]
+    blink_results.loc[blink_results["entity_link"]
+                      == "Unknown", "entity_link"] = -1
+    blink_results["entity_link"] = pd.to_numeric(blink_results["entity_link"])
 
-    # list_of_cluster_dfs = blink_results.groupby('doc_id')
+    list_of_cluster_dfs = blink_results.groupby('doc_id')
 
-    # entities = []
-    # ids = []
+    entities = []
+    ids = []
 
-    # for group, cluster_df in list_of_cluster_dfs:
-    #     doc_entities = []
-    #     doc_id = cluster_df['doc_id'].tolist()[0]
-    #     mentions = cluster_df['mention'].tolist()
-    #     cluster_df['char_spans'] = cluster_df['char_spans'].apply(
-    #         lambda list_string: ast.literal_eval(list_string))
-    #     mention_spans = cluster_df['char_spans'].tolist()
-    #     mention_spans = [tuple(span) for span in mention_spans]
-    #     mentions_type = cluster_df['mention_type'].tolist()
-    #     entity_links = cluster_df['entity_link'].tolist()
-    #     entity_names = cluster_df['entity_names'].tolist()
+    for group, cluster_df in list_of_cluster_dfs:
+        doc_entities = []
+        doc_id = cluster_df['doc_id'].tolist()[0]
+        mentions = cluster_df['mention'].tolist()
+        cluster_df['char_spans'] = cluster_df['char_spans'].apply(
+            lambda list_string: ast.literal_eval(list_string))
+        mention_spans = cluster_df['char_spans'].tolist()
+        mention_spans = [tuple(span) for span in mention_spans]
+        mentions_type = cluster_df['mention_type'].tolist()
+        entity_links = cluster_df['entity_link'].tolist()
+        entity_names = cluster_df['entity_names'].tolist()
 
-    #     for idx in range(0, len(mentions)):
-    #         mention = dict()
-    #         mention['mention'] = mentions[idx]
-    #         mention['mention_type'] = mentions_type[idx]
-    #         mention['mention_span'] = mention_spans[idx]
-    #         mention['entity_link'] = entity_links[idx]
-    #         mention['entity_name'] = entity_names[idx]
-    #         doc_entities.append(mention)
-    #     ids.append(doc_id)
-    #     entities.append(doc_entities)
+        for idx in range(0, len(mentions)):
+            mention = dict()
+            mention['mention'] = mentions[idx]
+            mention['mention_type'] = mentions_type[idx]
+            mention['mention_span'] = mention_spans[idx]
+            mention['entity_link'] = entity_links[idx]
+            mention['entity_name'] = entity_names[idx]
+            doc_entities.append(mention)
+        ids.append(doc_id)
+        entities.append(doc_entities)
 
-    # entities_df = pd.DataFrame()
-    # entities_df['ID'] = ids
-    # entities_df['identified_entities'] = entities
+    entities_df = pd.DataFrame()
+    entities_df['ID'] = ids
+    entities_df['identified_entities'] = entities
 
-    # print(entities_df.head())
+    print(entities_df.head())
 
-    # results_df = pd.merge(articles_df, entities_df, on=["ID"])
+    results_df = pd.merge(articles_df, entities_df, on=["ID"])
 
-    # print(results_df.info())
-    # results_df.to_csv("data/jerex_plus_blink.csv", index=False)
+    print(results_df.info())
+    results_df.to_csv("data/jerex_plus_blink.csv", index=False)
 
-    # # Update results to ElasicSearch
-    # for idx, row in results_df.iterrows():
-    #     meta_dict = {'text_entities': row['identified_entities']}
-    #     document_store.update_document_meta(
-    #         id=row['elasticsearch_ID'], meta=meta_dict)
+    # Update results to ElasicSearch
+    for idx, row in results_df.iterrows():
+        meta_dict = {'text_entities': row['identified_entities']}
+        document_store.update_document_meta(
+            id=row['elasticsearch_ID'], meta=meta_dict)
 
     end = time.time()
     print("Time to complete jerex and entity linking", end - start)

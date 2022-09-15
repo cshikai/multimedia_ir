@@ -3,18 +3,22 @@ import base64
 import json
 import yaml
 
+
 def read_yaml(file_path='config.yaml'):
     with open(file_path, "r") as f:
         return yaml.safe_load(f)
 
+
 config = read_yaml()
 URL = config['MTCNN']['URL']
+
 
 class MTCNNManager():
 
     def __init__(self):
         self.path = URL+'/crop'
-        self.header = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+        self.header = {'Content-type': 'application/json',
+                       'Accept': 'text/plain'}
 
     def crop_faces_from_path(self, img_path):
         """        
@@ -34,7 +38,7 @@ class MTCNNManager():
                 where N is the number of faces found
         """
         with open(img_path, "rb") as f:
-            im_bytes = f.read()        
+            im_bytes = f.read()
         im_b64 = base64.b64encode(im_bytes).decode("utf8")
         payload = json.dumps({"image": im_b64})
         r = requests.post(self.path, data=payload, headers=self.header)
@@ -60,6 +64,8 @@ class MTCNNManager():
                                 example shape: [N, 1]
                 where N is the number of faces found
         """
-        r = requests.post(self.path, data=json.dumps(img_bytes), headers=self.header)
+        r = requests.post(self.path, data=json.dumps(
+            img_bytes), headers=self.header)
+        print(r.text)
         res = json.loads(r.text)
         return res

@@ -50,10 +50,12 @@ def get_location(loc_name):
 count = 0
 if __name__ == "__main__":
     # Size 1000 because got only 700+ documents
-    resp = client.search(index=INDEX_NAME, query={"match_all": {}}, size=1000)
+    resp = client.search(index=INDEX_NAME, query={"match_all": {}}, size=1500)
     print("Got %d Hits:" % resp['hits']['total']['value'])
     for hit in resp['hits']['hits']:
         loc_list = []
+        if not 'text_entities' in hit['_source']:
+            continue
         for entity in hit['_source']['text_entities']:
             if entity['mention_type'] == 'LOC' or entity['mention_type'] == 'GPE':
                 # No entity linked

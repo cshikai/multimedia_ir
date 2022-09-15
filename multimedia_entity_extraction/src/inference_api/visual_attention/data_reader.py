@@ -26,10 +26,10 @@ class VALiveDataReader(DataReader):
                                     verify_certs=False
                                     )
 
-    def get_generator(self, document_ids):
+    def get_generator(self, indexes):
         index = 0
-        for document_id in document_ids:
-            result = self.client.get(index='documents',
+        for document_id in indexes:
+            result = self.client.get(index='documents_m2e2',
                                      id=document_id,
                                      )
 
@@ -37,22 +37,32 @@ class VALiveDataReader(DataReader):
             visual_entities = result['_source']['visual_entities']
             text_entities = result['_source']['text_entities']
 
+            # print(len(text_entities))
+            # print(text_entities)
+            # print(text_content)
+
             text_generator = self.text_entity_extractor.get_generator(
                 text_content, text_entities)
+
+            # for i in text_generator:
+            #     print(i)
             image_generator = self.visual_entity_extractor.get_generator(
                 visual_entities)
 
-            for image_url, image_entity_index, image_data, bounding_box in image_generator:
-                for text, text_entity_index, token_span in text_generator:
-                    yield {
-                        'index': document_id,
-                        'image_url': image_url,
-                        'text': text,
-                        'text_entity_index': text_entity_index,
-                        'image_entity_index': image_entity_index,
-                        'image': image_data,
-                        'token_span': token_span,
-                        'bounding_box': bounding_box}
+            for image_url, image_entity_index, image_data, bounding_box, object_type, linked_image in image_generator:
+                for text, text_entity_index, token_span, linked_text in text_generator:
+                    if not (linked_image and linked_text):
+
+                        yield {
+                            'index': document_id,
+                            'image_url': image_url,
+                            'text': text,
+                            'text_entity_index': text_entity_index,
+                            'image_entity_index': image_entity_index,
+                            'image': image_data,
+                            'token_span': token_span,
+                            'bounding_box': bounding_box,
+                            'object_type': object_type}
 
 
 class UnknownVisualEntityExtractor:
@@ -63,16 +73,41 @@ class UnknownVisualEntityExtractor:
     def get_generator(self, images):
 
         for image in images:
+
+            object_type = 'face'
             entity_ids = image['person_id']
             bounding_boxes = image['person_bbox']
             image_url = image['file_name']
 
             image_data = self.download_image(image_url)
+
+            PIL_image = Image.fromarray(np.uint8(image_data)).convert('RGB')
             N = len(entity_ids)
+
             for i in range(N):
                 entity_id = entity_ids[i]
                 if entity_id == -1:
-                    yield image_url, i, image_data, bounding_boxes[i]
+                    linked_image = False
+                else:
+                    linked_image = True
+
+                bounding_box = bounding_boxes[i]
+                reshaped_bounding_boxes = [
+                    (bounding_box[0], bounding_box[1]), (bounding_box[2], bounding_box[3])]
+                yield image_url, i, PIL_image, reshaped_bounding_boxes, object_type, linked_image
+
+            object_bounding_boxes = image['obj_bbox']
+            object_classes = image['obj_class']
+            object_confidence = image['obj_conf']
+            linked_image = False
+            N = len(object_bounding_boxes)
+            for i in range(N):
+                object_class = object_classes[i]
+                bounding_box = object_bounding_boxes[i]
+
+                reshaped_bounding_boxes = [
+                    (bounding_box[0], bounding_box[1]), (bounding_box[2], bounding_box[3])]
+                yield image_url, i, PIL_image, reshaped_bounding_boxes, object_class, linked_image
 
     def download_image(self, server_path):
         body = {'server_path': server_path}
@@ -87,16 +122,21 @@ class UnknownTextEntityExtractor:
         self.token_mapper = TextTokenMapper()
 
     def get_generator(self, text, text_entities):
+
         N = len(text_entities)
         sentences = self.token_mapper.split_sentences(text)
+
         for i in range(N):
             entity = text_entities[i]
             if entity['entity_link'] == -1:
-                sentence_index, span_start, span_end = entity['mention_span']
-                sentence = sentences[sentence_index]
-                token_span = self.token_mapper.get_tokens(
-                    sentence, entity['mention'], span_start, span_end)
-                yield sentences[sentence_index], i, token_span
+                linked_text = False
+            else:
+                linked_text = True
+            sentence_index, span_start, span_end = entity['mention_span']
+            sentence = sentences[sentence_index]
+            token_span = self.token_mapper.get_tokens(
+                sentence, entity['mention'], span_start, span_end)
+            yield sentences[sentence_index], i, token_span, linked_text
 
 
 class TextTokenMapper:
@@ -162,7 +202,6 @@ class VADataReader(DataReader):
         for index in indexes:
             yield self.read(index)
 
-            
     def read(self, index):
         data_slice = self.data.loc[index].compute()
         text = self.read_text(data_slice)
@@ -170,8 +209,8 @@ class VADataReader(DataReader):
 
         text_entity_index = 1
         image_entity_index = 1
-        token_span = (1,1)
-        bounding_box = [(1,4),(3,2)]
+        token_span = (1, 1)
+        bounding_box = [(1, 4), (3, 2)]
 
         return {
             'index': index,
@@ -200,7 +239,3 @@ class VADataReader(DataReader):
             image = rgbimg
 
         return image, image_url
-
-
-class VALiveDataReader(DataReader):
-    pass

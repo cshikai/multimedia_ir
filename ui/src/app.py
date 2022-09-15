@@ -4,9 +4,9 @@ import numpy as np
 import os
 import requests
 import re
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from PIL import Image, ImageDraw
-import json
+from collections import Counter
 from collections import defaultdict
 from elasticsearch import Elasticsearch
 
@@ -27,12 +27,12 @@ es = Elasticsearch(ELASTIC_URL,
 
 
 class Report:
-    def __init__(self, id, title="", body="", date="", associated_entities=[], images={}, visual_entities=[], geo_data=[], timestamp=""):
+    def __init__(self, id, title="", body="", date="", text_entities=[], images={}, visual_entities=[], geo_data=[], timestamp=""):
         self.id = id
         self.title = title
         self.body = body
         self.date = date
-        self.associated_entities = associated_entities
+        self.text_entities = text_entities
         self.images = images
         self.visual_entities = visual_entities
         self.geo_data = geo_data
@@ -96,8 +96,11 @@ def generate_hypertext(text_entities: List[Dict], body: str):
         text_entities, key=lambda entity: len(entity['mention']), reverse=True)
     for entity in sorted_entities:
         if entity["mention"] != " " and entity['entity_link'] != "Unknown":
+            # Workaround for closing in entity mention
+            mention = entity['mention'].replace(')', '\)')
+            print(hypertext, mention)
             hypertext = re.sub(
-                fr"\b{entity['mention']}\b", f"<a href='?entity={entity['entity_link']}' target='_self'>{entity['mention']}</a>", hypertext)
+                fr"\b{mention}\b", f"<a href='?entity={entity['entity_link']}' target='_self'>{entity['mention']}</a>", hypertext)
     return hypertext
 
 
@@ -108,6 +111,16 @@ def get_image(server_path: str):
     return res.json()['image']
 
 
+@ st.experimental_memo(show_spinner=False)
+def get_entity_name(id: int) -> str:
+    if id == "-1":
+        return "Unknown"
+    else:
+        res = es.search(index="wikipedia", query={"term": {"_id": id}})
+    return res['hits']['hits'][0]['_source']['title']
+
+
+@ st.experimental_memo(show_spinner=False)
 def search_reports(query: str, start_date=None, end_date=None) -> List[Report]:
     es_query = {"bool": {
         "filter": {"match_all": {}},
@@ -128,8 +141,10 @@ def search_reports(query: str, start_date=None, end_date=None) -> List[Report]:
         body = doc['_source']['content']
         geo_data = doc['_source']['geo_data']
         timestamp = doc['_source']['timestamp']
+        text_entities = doc['_source']['text_entities']
+        visual_entities = res['hits']['hits'][0]['_source']['visual_entities'] if res['hits']['hits'][0]['_source']['images'] else []
         result = Report(id=id, title=title, body=body,
-                        geo_data=geo_data, timestamp=timestamp)
+                        geo_data=geo_data, timestamp=timestamp, text_entities=text_entities, visual_entities=visual_entities)
         results.append(result)
     return results
 
@@ -186,8 +201,6 @@ inp = st.text_input(label='Search', key='searchbar',
                     value=st.session_state['search'], placeholder='Lewis Hamilton')
 reports = None
 
-
-print(inp)
 if inp != "":
     # Reset entity and report parameters on new query
     st.session_state['entity'] = ""
@@ -228,31 +241,55 @@ if st.session_state['search']:
                         f"<a href='?entity={entity.id}' target='_self'>{entity.title}</a>", anchor="")
 
     with maps_tab:
-        def display_map(markers):
-            m = folium.Map([0, 0], tiles='OpenStreetMap', zoom_start=3)
+        def extract_entities(reports: List[Report]) -> Tuple[Counter, defaultdict]:
+            entities = Counter()
+            geo_entities = defaultdict(list)
+            for report in reports:
+                text_entities = [entity['entity_link']
+                                 for entity in report.text_entities if entity['entity_link'] != -1]
+                entities.update(text_entities)
+                visual_entities = [entity['person_id']
+                                   for entity in report.visual_entities]
+                visual_entities = [
+                    person_id for person_ids in visual_entities for person_id in person_ids if person_id != -1]
+                entities.update(visual_entities)
+                for location in report.geo_data:
+                    geo_entities[(location['entity_name'], location['latitude'], location['longitude'])].append(
+                        {"ID": report.id, "timestamp": report.timestamp, "entities": set(text_entities+visual_entities)})
+            return entities, geo_entities
 
+        def display_map(markers, checkbox):
+            m = folium.Map([0, 0], tiles='OpenStreetMap', zoom_start=3)
             # Add marker for Location
-            for geo_data in markers.keys():
-                folium.Marker(location=[geo_data[1], geo_data[2]],
-                              popup=folium.Popup(f"""
-                            <b>{geo_data[0]}</b>
-                            <br><br>
-                            {'<br>'.join(markers[geo_data])}<br>
-                            """, min_width=180, max_width=180),
-                              icon=folium.Icon()).add_to(m)
+            for location in markers.keys():
+                location_name = location[0]
+                location_latitude = location[1]
+                location_longitude = location[2]
+                entities = [report['entities'] for report in markers[location]]
+                entities_set = set.union(*entities)
+                for entity in entities_set:
+                    # display the marker as long as one of its entity is selected
+                    if checkbox[entity]:
+                        folium.Marker(location=[location_latitude, location_longitude],
+                                      popup=folium.Popup(f"""
+                                    <b>{location_name}</b>
+                                    <br><br>
+                                    {'<br>'.join([f"{report['timestamp']}: <b><a href='http://localhost:8501/?report={report['ID']}' target='_blank'>{report['ID']}</a></b>" for report in markers[location]])}<br>
+                                    """, min_width=180, max_width=180),
+                                      icon=folium.Icon()).add_to(m)
 
             return st.markdown(m._repr_html_(), unsafe_allow_html=True)
 
-        def generate_markers(reports):
-            markers = defaultdict(list)
-            # Sort reports by descending timestamp
-            sorted_reports = sorted(
-                reports, key=lambda report: report.timestamp, reverse=True)
-            for report in sorted_reports:
-                for geo in report.geo_data:
-                    markers[(geo["entity_name"], geo["latitude"],
-                            geo["longitude"])].append(f"{report.timestamp}: <b>{report.id}</b>")
-            return markers
+        # def generate_markers(reports: List[Report]):
+        #     markers = defaultdict(list)
+        #     # Sort reports by descending timestamp
+        #     sorted_reports = sorted(
+        #         reports, key=lambda report: report.timestamp, reverse=True)
+        #     for report in sorted_reports:
+        #         for geo in report.geo_data:
+        #             markers[(geo["entity_name"], geo["latitude"],
+        #                     geo["longitude"])].append(f"{report.timestamp}: <b><a href='http://localhost:8501/?report={report.id}' target='_blank'>{report.id}</a></b>")  # Hard code URL
+        #     return markers
 
         start_date = st.date_input(
             "Start Date", max_value=datetime.date.today(), value=datetime.date(1970, 1, 1))
@@ -260,8 +297,23 @@ if st.session_state['search']:
             "End Date", max_value=datetime.date.today())
         reports: List[Report] = search_reports(
             inp, start_date=start_date, end_date=end_date)
-        markers = generate_markers(reports)
-        display_map(markers)
+        entities, markers = extract_entities(reports)
+        checkbox = {entity_id: False for entity_id in dict(entities)}
+
+        col1, col2 = st.columns([8, 2])
+
+        with col2:
+            for entity in entities.most_common():
+                checked = st.checkbox(
+                    label=f"{get_entity_name(entity[0])} ({entity[1]})", key=entity[0], value=checkbox[entity[0]])
+                if checked:
+                    checkbox[entity[0]] = True
+                else:
+                    checkbox[entity[0]] = False
+
+        with col1:
+            # markers = generate_markers(reports)
+            display_map(markers, checkbox)
 
 elif st.session_state['entity']:
     col1, col2 = st.columns([8, 2])
@@ -327,7 +379,7 @@ elif st.session_state['report']:
                         # Generate checkbox
                         for person_id in set(visual_entity['person_id']):
                             st.checkbox(
-                                label=f"{person_id}", key=f"{server_path}_{person_id}", value=True)
+                                label=f"{get_entity_name(person_id)}", key=f"{server_path}_{person_id}", value=True)
 
                         # Generate bounding box
                         for person_idx, bbox in enumerate(visual_entity['person_bbox']):
@@ -337,7 +389,7 @@ elif st.session_state['report']:
                                     bbox)
                                 # Top left corner
                                 draw.text((bbox[0], bbox[1]),
-                                          f"ID: {visual_entity['person_id'][person_idx]}, Conf: {visual_entity['person_conf'][person_idx]}")
+                                          f"{get_entity_name(visual_entity['person_id'][person_idx])}, Conf: {visual_entity['person_conf'][person_idx]}")
                         break
 
                 # im.thumbnail((256, 256))

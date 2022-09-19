@@ -251,7 +251,7 @@ if st.session_state['search']:
             entities = Counter()
             geo_entities = defaultdict(list)
             for report in reports:
-                text_entities = [entity['entity_link']
+                text_entities = [str(entity['entity_link'])
                                  for entity in report.text_entities if entity['entity_link'] != -1]
                 entities.update(text_entities)
                 visual_entities = [entity['person_id']

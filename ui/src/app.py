@@ -98,7 +98,7 @@ def generate_hypertext(text_entities: List[Dict], body: str):
     sorted_entities = sorted(
         text_entities, key=lambda entity: len(entity['mention']), reverse=True)
     for entity in sorted_entities:
-        if entity["mention"] != " " and entity['entity_link'] != -1:
+        if entity["mention"] != " " and entity['entity_link'] != "-1":
             # Workaround for closing in entity mention
             mention = entity['mention'].replace(')', '\)')
             hypertext = re.sub(
@@ -146,7 +146,8 @@ def search_reports(query: str, start_date=None, end_date=None) -> List[Report]:
         timestamp = doc['_source']['timestamp']
         text_entities = doc['_source']['text_entities'] if 'text_entities' in doc['_source'] else [
         ]
-        visual_entities = res['hits']['hits'][0]['_source']['visual_entities'] if res['hits']['hits'][0]['_source']['images'] else []
+        visual_entities = doc['_source']['visual_entities'] if doc['_source']['images'] else [
+        ]
         result = Report(id=id, title=title, body=body,
                         geo_data=geo_data, timestamp=timestamp, text_entities=text_entities, visual_entities=visual_entities)
         results.append(result)
@@ -251,13 +252,13 @@ if st.session_state['search']:
             entities = Counter()
             geo_entities = defaultdict(list)
             for report in reports:
-                text_entities = [str(entity['entity_link'])
-                                 for entity in report.text_entities if entity['entity_link'] != -1]
+                text_entities = [entity['entity_link']
+                                 for entity in report.text_entities if entity['entity_link'] != "-1"]
                 entities.update(text_entities)
-                visual_entities = [entity['person_id']
-                                   for entity in report.visual_entities]
+                visual_person_entities = [entity['person_id']
+                                          for entity in report.visual_entities]
                 visual_entities = [
-                    person_id for person_ids in visual_entities for person_id in person_ids if person_id != "-1"]
+                    person_id for person_ids in visual_person_entities for person_id in person_ids if person_id != "-1"]
                 entities.update(visual_entities)
                 for location in report.geo_data:
                     geo_entities[(location['entity_name'], location['latitude'], location['longitude'])].append(
@@ -280,7 +281,7 @@ if st.session_state['search']:
                                       popup=folium.Popup(f"""
                                     <b>{location_name}</b>
                                     <br><br>
-                                    {'<br>'.join([f"{report['timestamp']}: <b><a href='http://localhost:8501/?report={report['ID']}' target='_blank'>{report['ID']}</a></b>" for report in markers[location]])}<br>
+                                    {''.join([f"{report['timestamp']}: <b><a href='http://localhost:8501/?report={report['ID']}' target='_blank'>{report['ID']}</a></b><br>" if entity in report['entities'] else '' for report in markers[location]])}<br>
                                     """, min_width=180, max_width=180),
                                       icon=folium.Icon()).add_to(m)
 
@@ -384,12 +385,16 @@ elif st.session_state['report']:
                     if visual_entity["file_name"] != server_path:
                         continue
                     else:
-                        # Generate checkbox
+                        # Generate face_id checkbox
                         for person_id in set(visual_entity['person_id']):
                             st.checkbox(
                                 label=f"{get_entity_name(person_id)}", key=f"{server_path}_{person_id}", value=True)
+                        # Generate obj_det checkbox
+                        for obj_class in set(visual_entity['obj_class']):
+                            st.checkbox(
+                                label=f"{obj_class}", key=f"{server_path}_{obj_class}", value=True)
 
-                        # Generate bounding box
+                        # Generate face_id bounding box
                         for person_idx, bbox in enumerate(visual_entity['person_bbox']):
                             draw = ImageDraw.Draw(im)
                             if st.session_state[f"{server_path}_{visual_entity['person_id'][person_idx]}"]:
@@ -398,6 +403,9 @@ elif st.session_state['report']:
                                 # Top left corner
                                 draw.text((bbox[0], bbox[1]),
                                           f"{get_entity_name(visual_entity['person_id'][person_idx])}, Conf: {visual_entity['person_conf'][person_idx]}", font=ImageFont.truetype("DejaVuSans.ttf", 12))
+
+                        # Generate obj_det bounding box
+
                         break
                 # im.thumbnail((256, 256))
                 st.image(im)

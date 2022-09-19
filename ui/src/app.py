@@ -261,8 +261,11 @@ if st.session_state['search']:
                     person_id for person_ids in visual_person_entities for person_id in person_ids if person_id != "-1"]
                 entities.update(visual_entities)
                 for location in report.geo_data:
-                    geo_entities[(location['entity_name'], location['latitude'], location['longitude'])].append(
-                        {"ID": report.id, "timestamp": report.timestamp, "entities": set(text_entities+visual_entities)})
+                    report_entities = {"ID": report.id, "timestamp": report.timestamp,
+                                       "entities": set(text_entities+visual_entities)}
+                    if report_entities not in geo_entities[(location['entity_name'], location['latitude'], location['longitude'])]:
+                        geo_entities[(location['entity_name'], location['latitude'], location['longitude'])].append(
+                            report_entities)
             return entities, geo_entities
 
         def display_map(markers, checkbox):

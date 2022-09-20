@@ -55,7 +55,7 @@ if __name__ == '__main__':
             detection_dict['file_name'] = file_key
 
             # Facenet Inference
-            mask = [True if a > 0.7 else False for a in res_fn['cos_conf']]
+            mask = [True if a > 0.65 else False for a in res_fn['cos_conf']]
             id_list = [str(a) if mask[res_fn['cos_id'].index(a)]
                        else "-1" for a in res_fn['cos_id']]
             res_fn['bb'] = [[max(b, 0) for b in a]

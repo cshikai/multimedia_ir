@@ -78,6 +78,29 @@ if __name__ == "__main__":
                                  'latitude': latitude,
                                  'longitude': longitude
                                  })
+        for captions in hit['_source']['text_caption_entities']:
+            ptr = 0
+            for type in captions['mention_types']:
+                if type == 'LOC' or type == 'GPE':
+                    entity_name = captions['entity_names'][ptr]
+                    if entity_name == 'Unknown':
+                        continue
+                    geo_resp = get_location(entity_name)
+                    # If no location found
+                    if geo_resp['hits']['total']['value'] == 0:
+                        print("{}: No location found!!".format(
+                            entity_name))
+                        continue
+                    latitude = geo_resp['hits']['hits'][0]['_source']['latitude']
+                    longitude = geo_resp['hits']['hits'][0]['_source']['longitude']
+                    print("{}: FOUND: {}".format(entity_name,
+                                                 geo_resp['hits']['hits'][0]['_source']['name']))
+
+                    loc_list.append({'entity_name': entity_name,
+                                    'latitude': latitude,
+                                     'longitude': longitude
+                                     })
+
         q = {
             "script": {
                 "source": "ctx._source.geo_data=params.data",

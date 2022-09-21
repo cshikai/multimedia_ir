@@ -322,13 +322,23 @@ if st.session_state['search']:
         col1, col2 = st.columns([8, 2])
 
         with col2:
-            for entity in entities.most_common():
+            # Display top 40 entities
+            for entity in entities.most_common(40):
                 checked = st.checkbox(
                     label=f"{get_entity_name(entity[0])} ({entity[1]})", key=entity[0], value=checkbox[entity[0]])
                 if checked:
                     checkbox[entity[0]] = True
                 else:
                     checkbox[entity[0]] = False
+            if len(entities.most_common()) > 40:
+                with st.expander("See more"):
+                    for entity in entities.most_common()[40:]:
+                        checked = st.checkbox(
+                            label=f"{get_entity_name(entity[0])} ({entity[1]})", key=entity[0], value=checkbox[entity[0]])
+                        if checked:
+                            checkbox[entity[0]] = True
+                        else:
+                            checkbox[entity[0]] = False
 
         with col1:
             # markers = generate_markers(reports)

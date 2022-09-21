@@ -290,17 +290,6 @@ if st.session_state['search']:
 
             return st.markdown(m._repr_html_(), unsafe_allow_html=True)
 
-        # def generate_markers(reports: List[Report]):
-        #     markers = defaultdict(list)
-        #     # Sort reports by descending timestamp
-        #     sorted_reports = sorted(
-        #         reports, key=lambda report: report.timestamp, reverse=True)
-        #     for report in sorted_reports:
-        #         for geo in report.geo_data:
-        #             markers[(geo["entity_name"], geo["latitude"],
-        #                     geo["longitude"])].append(f"{report.timestamp}: <b><a href='http://localhost:8501/?report={report.id}' target='_blank'>{report.id}</a></b>")  # Hard code URL
-        #     return markers
-
         start_date = st.date_input(
             "Start Date", max_value=datetime.date.today(), value=datetime.date(1970, 1, 1))
         end_date = st.date_input(
@@ -393,22 +382,30 @@ elif st.session_state['report']:
                             st.checkbox(
                                 label=f"{get_entity_name(person_id)}", key=f"{server_path}_{person_id}", value=True)
                         # Generate obj_det checkbox
-                        for obj_class in set(visual_entity['obj_class']):
-                            st.checkbox(
-                                label=f"{obj_class}", key=f"{server_path}_{obj_class}", value=True)
+                        with st.expander("See objects detected"):
+                            for obj_class in set(visual_entity['obj_class']):
+                                st.checkbox(
+                                    label=f"{obj_class}", key=f"{server_path}_{obj_class}", value=False)
 
                         # Generate face_id bounding box
                         for person_idx, bbox in enumerate(visual_entity['person_bbox']):
                             draw = ImageDraw.Draw(im)
                             if st.session_state[f"{server_path}_{visual_entity['person_id'][person_idx]}"]:
                                 draw.rectangle(
-                                    bbox)
+                                    bbox, outline='green')
                                 # Top left corner
                                 draw.text((bbox[0], bbox[1]),
                                           f"{get_entity_name(visual_entity['person_id'][person_idx])}, Conf: {visual_entity['person_conf'][person_idx]}", font=ImageFont.truetype("DejaVuSans.ttf", 12))
 
                         # Generate obj_det bounding box
-
+                        for obj_idx, bbox in enumerate(visual_entity['obj_bbox']):
+                            draw = ImageDraw.Draw(im)
+                            if st.session_state[f"{server_path}_{visual_entity['obj_class'][obj_idx]}"]:
+                                draw.rectangle(
+                                    bbox, outline='blue')
+                                # Top left corner
+                                draw.text((bbox[0], bbox[1]),
+                                          f"{visual_entity['obj_class'][obj_idx]}, Conf: {visual_entity['obj_conf'][obj_idx]}", font=ImageFont.truetype("DejaVuSans.ttf", 12))
                         break
                 # im.thumbnail((256, 256))
                 st.image(im)

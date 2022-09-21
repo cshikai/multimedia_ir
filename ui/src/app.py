@@ -141,7 +141,8 @@ def get_entity_name(id: int) -> str:
 def search_reports(query: str, start_date=None, end_date=None) -> List[Report]:
     es_query = {"bool": {
         "filter": {"match_all": {}},
-        "must": [{"match": {"content": query}}]}
+        "minimum_should_match": 1,
+        "should": [{"match": {"content": query}}, {"match": {"image_captions": query}}]}
     }
     if start_date or end_date:
         es_query["bool"]["filter"] = {
@@ -179,7 +180,7 @@ def get_report(id: int) -> Report:
     # """
     res = es.search(index="documents_m2e2", query={"term": {"ID": id}})
     body = res['hits']['hits'][0]['_source']['content']
-    text_entities = res['hits']['hits'][0]['_source']['text_entities']
+    text_entities = res['hits']['hits'][0]['_source']['text_entities'] if 'text_entities' in res['hits']['hits'][0]['_source'] else []
     hypertext = generate_hypertext(text_entities, body)
     images = {}
     image_captions = {}

@@ -99,10 +99,25 @@ def generate_hypertext(text_entities: List[Dict], body: str):
         text_entities, key=lambda entity: len(entity['mention']), reverse=True)
     for entity in sorted_entities:
         if entity["mention"] != " " and entity['entity_link'] != "-1":
-            # Workaround for closing in entity mention
+            # Workaround for closing brackets in entity mention
             mention = entity['mention'].replace(')', '\)')
             hypertext = re.sub(
                 fr"\b{mention}\b", f"<a href='?entity={entity['entity_link']}' target='_self'>{entity['mention']}</a>", hypertext)
+    return hypertext
+
+
+def generate_hypertext_caption(text_entities: Dict, body: str):
+    hypertext = body
+    entity_length = [len(entity) for entity in text_entities['mentions']]
+    # Sort entities such that the longer mentions get replaced first
+    sorted_entities = [x for _, x in sorted(
+        zip(entity_length, text_entities['mentions']), reverse=True)]
+    sorted_links = [x for _, x in sorted(
+        zip(entity_length, text_entities['entity_links']), reverse=True)]
+    for idx, mention in enumerate(sorted_entities):
+        if mention != " " and sorted_links[idx] != "-1":
+            hypertext = re.sub(
+                fr"\b{mention}\b", f"<a href='?entity={sorted_links[idx]}' target='_self'>{mention}</a>", hypertext)
     return hypertext
 
 
@@ -168,9 +183,14 @@ def get_report(id: int) -> Report:
     hypertext = generate_hypertext(text_entities, body)
     images = {}
     image_captions = {}
+    text_caption_entities = res['hits']['hits'][0]['_source']['text_caption_entities']
+    text_caption_mappings = dict(
+        zip([text_caption['file_name'] for text_caption in text_caption_entities], text_caption_entities))
     for idx, server_path in enumerate(res['hits']['hits'][0]['_source']['images']):
         images[server_path] = get_image(server_path)
-        image_captions[server_path] = res['hits']['hits'][0]['_source']['image_captions'][idx]
+        caption = res['hits']['hits'][0]['_source']['image_captions'][idx]
+        image_captions[server_path] = generate_hypertext_caption(
+            text_caption_mappings[server_path], caption)
     visual_entities = res['hits']['hits'][0]['_source']['visual_entities'] if images else [
     ]
     result = Report(id=res['hits']['hits'][0]['_source']['ID'],
@@ -407,9 +427,9 @@ elif st.session_state['report']:
                                 draw.text((bbox[0], bbox[1]),
                                           f"{visual_entity['obj_class'][obj_idx]}, Conf: {visual_entity['obj_conf'][obj_idx]}", font=ImageFont.truetype("DejaVuSans.ttf", 12))
                         break
-                # im.thumbnail((256, 256))
                 st.image(im)
-                st.write(report.image_captions[server_path])
+                st.write(
+                    report.image_captions[server_path], unsafe_allow_html=True)
                 st.markdown("***")  # Line Break
 
     with col2:

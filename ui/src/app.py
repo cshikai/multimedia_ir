@@ -190,8 +190,9 @@ def get_report(id: int) -> Report:
     for idx, server_path in enumerate(res['hits']['hits'][0]['_source']['images']):
         images[server_path] = get_image(server_path)
         caption = res['hits']['hits'][0]['_source']['image_captions'][idx]
-        image_captions[server_path] = generate_hypertext_caption(
-            text_caption_mappings[server_path], caption)
+        if server_path in text_caption_mappings:
+            image_captions[server_path] = generate_hypertext_caption(
+                text_caption_mappings[server_path], caption)
     visual_entities = res['hits']['hits'][0]['_source']['visual_entities'] if images else [
     ]
     result = Report(id=res['hits']['hits'][0]['_source']['ID'],
@@ -221,231 +222,230 @@ def get_entity(id: int) -> Entity:
     return result
 
 
-# Info
-st.info('Elasticsearch ID temporarily displayed as report title until title is populated to ES')
+if __name__ == '__main__':
 
-# Search Bar
-inp = st.text_input(label='Search', key='searchbar',
-                    value=st.session_state['search'], placeholder='Donald Trump')
-reports = None
+    # Search Bar
+    inp = st.text_input(label='Search', key='searchbar',
+                        value=st.session_state['search'], placeholder='Donald Trump')
+    reports = None
 
-if inp != "":
-    # Reset entity and report parameters on new query
-    st.session_state['entity'] = ""
-    st.session_state['report'] = ""
-    query_params["search"] = inp
-    st.experimental_set_query_params(**query_params)
-    with st.spinner(text=f'Searching: {inp}'):
-        reports: List[Report] = search_reports(inp)
-        entities: List[Entity] = search_entities(inp)
-        st.session_state['reports'] = reports
-elif inp != query_params.get('search', [''])[0]:
-    # User clears input
-    query_params["search"] = inp
-    st.experimental_set_query_params(**query_params)
+    if inp != "":
+        # Reset entity and report parameters on new query
+        st.session_state['entity'] = ""
+        st.session_state['report'] = ""
+        query_params["search"] = inp
+        st.experimental_set_query_params(**query_params)
+        with st.spinner(text=f'Searching: {inp}'):
+            reports: List[Report] = search_reports(inp)
+            entities: List[Entity] = search_entities(inp)
+            st.session_state['reports'] = reports
+    elif inp != query_params.get('search', [''])[0]:
+        # User clears input
+        query_params["search"] = inp
+        st.experimental_set_query_params(**query_params)
 
+    # TODO: Navigate using states instead of href to preserve (reports) cache and prevent reloading (+ requerying) when back button is used.
+    if st.session_state['search']:
+        reports_tab, maps_tab = st.tabs(["📄 Reports", "📍 Maps"])
 
-# TODO: Navigate using states instead of href to preserve (reports) cache and prevent reloading (+ requerying) when back button is used.
-if st.session_state['search']:
-    reports_tab, maps_tab = st.tabs(["📄 Reports", "📍 Maps"])
+        with reports_tab:
+            col1, col2 = st.columns([8, 2])
+            with col1:
+                if reports:
+                    st.header("Reports")
+                    st.success(f"We found {len(reports)} matches")
+                    for doc in reports:
+                        st.subheader(
+                            f"<a href='?report={doc.id}' target='_self'>{doc.title}</a>", anchor="")
+                        st.write(escape_latex(doc.body))
 
-    with reports_tab:
-        col1, col2 = st.columns([8, 2])
-        with col1:
-            if reports:
-                st.header("Reports")
-                st.success(f"We found {len(reports)} matches")
-                for doc in reports:
-                    st.subheader(
-                        f"<a href='?report={doc.id}' target='_self'>{doc.title}</a>", anchor="")
-                    st.write(escape_latex(doc.body))
+            with col2:
+                if entities:
+                    st.header("Entity Results")
+                    st.success(f"We found {len(entities)} matches")
+                    for entity in entities:
+                        st.subheader(
+                            f"<a href='?entity={entity.id}' target='_self'>{entity.title}</a>", anchor="")
 
-        with col2:
-            if entities:
-                st.header("Entity Results")
-                st.success(f"We found {len(entities)} matches")
-                for entity in entities:
-                    st.subheader(
-                        f"<a href='?entity={entity.id}' target='_self'>{entity.title}</a>", anchor="")
+        with maps_tab:
+            def extract_entities(reports: List[Report]) -> Tuple[Counter, defaultdict]:
+                entities = Counter()
+                geo_entities = defaultdict(list)
+                for report in reports:
+                    text_entities = [entity['entity_link']
+                                     for entity in report.text_entities if entity['entity_link'] != "-1"]
+                    entities.update(text_entities)
+                    visual_person_entities = [entity['person_id']
+                                              for entity in report.visual_entities]
+                    visual_entities = [
+                        person_id for person_ids in visual_person_entities for person_id in person_ids if person_id != "-1"]
+                    entities.update(visual_entities)
+                    for location in report.geo_data:
+                        report_entities = {"ID": report.id, "timestamp": report.timestamp,
+                                           "entities": set(text_entities+visual_entities)}
+                        if report_entities not in geo_entities[(location['entity_name'], location['latitude'], location['longitude'])]:
+                            geo_entities[(location['entity_name'], location['latitude'], location['longitude'])].append(
+                                report_entities)
+                return entities, geo_entities
 
-    with maps_tab:
-        def extract_entities(reports: List[Report]) -> Tuple[Counter, defaultdict]:
-            entities = Counter()
-            geo_entities = defaultdict(list)
-            for report in reports:
-                text_entities = [entity['entity_link']
-                                 for entity in report.text_entities if entity['entity_link'] != "-1"]
-                entities.update(text_entities)
-                visual_person_entities = [entity['person_id']
-                                          for entity in report.visual_entities]
-                visual_entities = [
-                    person_id for person_ids in visual_person_entities for person_id in person_ids if person_id != "-1"]
-                entities.update(visual_entities)
-                for location in report.geo_data:
-                    report_entities = {"ID": report.id, "timestamp": report.timestamp,
-                                       "entities": set(text_entities+visual_entities)}
-                    if report_entities not in geo_entities[(location['entity_name'], location['latitude'], location['longitude'])]:
-                        geo_entities[(location['entity_name'], location['latitude'], location['longitude'])].append(
-                            report_entities)
-            return entities, geo_entities
+            def display_map(markers, checkbox):
+                m = folium.Map([0, 0], tiles='OpenStreetMap', zoom_start=3)
+                # Add marker for Location
+                for location in markers.keys():
+                    location_name = location[0]
+                    location_latitude = location[1]
+                    location_longitude = location[2]
+                    entities = [report['entities']
+                                for report in markers[location]]
+                    entities_set = set.union(*entities)
+                    for entity in entities_set:
+                        # display the marker as long as one of its entity is selected
+                        if checkbox[entity]:
+                            folium.Marker(location=[location_latitude, location_longitude],
+                                          popup=folium.Popup(f"""
+                                        <b>{location_name}</b>
+                                        <br><br>
+                                        {''.join([f"{report['timestamp']}: <b><a href='http://localhost:8501/?report={report['ID']}' target='_blank'>{report['ID']}</a></b><br>" if entity in report['entities'] else '' for report in markers[location]])}<br>
+                                        """, min_width=180, max_width=180),
+                                          icon=folium.Icon()).add_to(m)
 
-        def display_map(markers, checkbox):
-            m = folium.Map([0, 0], tiles='OpenStreetMap', zoom_start=3)
-            # Add marker for Location
-            for location in markers.keys():
-                location_name = location[0]
-                location_latitude = location[1]
-                location_longitude = location[2]
-                entities = [report['entities'] for report in markers[location]]
-                entities_set = set.union(*entities)
-                for entity in entities_set:
-                    # display the marker as long as one of its entity is selected
-                    if checkbox[entity]:
-                        folium.Marker(location=[location_latitude, location_longitude],
-                                      popup=folium.Popup(f"""
-                                    <b>{location_name}</b>
-                                    <br><br>
-                                    {''.join([f"{report['timestamp']}: <b><a href='http://localhost:8501/?report={report['ID']}' target='_blank'>{report['ID']}</a></b><br>" if entity in report['entities'] else '' for report in markers[location]])}<br>
-                                    """, min_width=180, max_width=180),
-                                      icon=folium.Icon()).add_to(m)
+                return st.markdown(m._repr_html_(), unsafe_allow_html=True)
 
-            return st.markdown(m._repr_html_(), unsafe_allow_html=True)
+            start_date = st.date_input(
+                "Start Date", max_value=datetime.date.today(), value=datetime.date(1970, 1, 1))
+            end_date = st.date_input(
+                "End Date", max_value=datetime.date.today())
+            reports: List[Report] = search_reports(
+                inp, start_date=start_date, end_date=end_date)
+            entities, markers = extract_entities(reports)
+            checkbox = {entity_id: False for entity_id in dict(entities)}
 
-        start_date = st.date_input(
-            "Start Date", max_value=datetime.date.today(), value=datetime.date(1970, 1, 1))
-        end_date = st.date_input(
-            "End Date", max_value=datetime.date.today())
-        reports: List[Report] = search_reports(
-            inp, start_date=start_date, end_date=end_date)
-        entities, markers = extract_entities(reports)
-        checkbox = {entity_id: False for entity_id in dict(entities)}
+            col1, col2 = st.columns([8, 2])
 
-        col1, col2 = st.columns([8, 2])
-
-        with col2:
-            # Display top 40 entities
-            for entity in entities.most_common(40):
-                checked = st.checkbox(
-                    label=f"{get_entity_name(entity[0])} ({entity[1]})", key=entity[0], value=checkbox[entity[0]])
-                if checked:
-                    checkbox[entity[0]] = True
-                else:
-                    checkbox[entity[0]] = False
-            if len(entities.most_common()) > 40:
-                with st.expander("See more"):
-                    for entity in entities.most_common()[40:]:
-                        checked = st.checkbox(
-                            label=f"{get_entity_name(entity[0])} ({entity[1]})", key=entity[0], value=checkbox[entity[0]])
-                        if checked:
-                            checkbox[entity[0]] = True
-                        else:
-                            checkbox[entity[0]] = False
-
-        with col1:
-            # markers = generate_markers(reports)
-            display_map(markers, checkbox)
-
-elif st.session_state['entity']:
-    col1, col2 = st.columns([8, 2])
-
-    entity_id = st.session_state['entity']
-    with st.spinner(text=f"Loading Report {entity_id}"):
-        entity: Entity = get_entity(entity_id)
-
-    with col1:
-        if entity:
-            st.header(f"**Entity: {entity.title}**")
-            st.write(
-                f"<div style='text-align: justify;'>{entity.body}</div>", unsafe_allow_html=True)
-            st.markdown("""---""")
-            st.markdown(
-                f"**Last Spotted**: {entity.details['Last Spotted'] if 'Last Spotted' in entity.details else ''}")
-            st.markdown(
-                f"**Location**: {entity.details['Location'] if 'Location' in entity.details else ''}")
-            st.markdown(f"**Activities:**")
-            for activity in entity.details['Activities'] if 'Activities' in entity.details else '':
-                st.markdown(f"{activity}")
-            st.markdown(f"**Associated Entities**:")
-            for associated_entity in entity.associated_entities:
-                st.markdown(
-                    f"<a href='?entity={associated_entity.id}' target='_self'>{associated_entity.title}</a>", unsafe_allow_html=True)
-            st.markdown(f"**Media**:")
-
-            # For future development: https://github.com/vivien000/st-clickable-images
-            for image_path in entity.media:
-                im = Image.open(image_path)
-                im.thumbnail((256, 256))
-                st.image(im)
-
-    with col2:
-        if entity:
-            st.header("Reports")
-            for report in entity.associated_reports:
-                st.subheader(
-                    f"<a href='?report={report.id}' target='_self'>{report.title}</a>", anchor="")
-                st.write(report.date)
-
-elif st.session_state['report']:
-    col1, col2 = st.columns([8, 2])
-
-    report_id = st.session_state['report']
-    with st.spinner(text=f"Loading Report {report_id}"):
-        report: Report = get_report(report_id)
-
-    with col1:
-        if report:
-            st.header(f"**Report: {report.title}**")
-            # NOTE: Unsafe
-            st.write(
-                f"<div style='text-align: justify;'>{report.body}</div>", unsafe_allow_html=True)
-            st.markdown("""---""")
-
-            for server_path, image in report.images.items():
-                img_bytes = base64.b64decode(image.encode('utf-8'))
-                im = Image.open(io.BytesIO(img_bytes)).convert('RGB')
-                # im = Image.fromarray(np.asarray(image).astype(np.uint8))
-                for visual_entity in report.visual_entities:
-                    if visual_entity["file_name"] != server_path:
-                        continue
+            with col2:
+                # Display top 40 entities
+                for entity in entities.most_common(40):
+                    checked = st.checkbox(
+                        label=f"{get_entity_name(entity[0])} ({entity[1]})", key=entity[0], value=checkbox[entity[0]])
+                    if checked:
+                        checkbox[entity[0]] = True
                     else:
-                        # Generate face_id checkbox
-                        for person_id in set(visual_entity['person_id']):
-                            st.checkbox(
-                                label=f"{get_entity_name(person_id)}", key=f"{server_path}_{person_id}", value=True)
-                        # Generate obj_det checkbox
-                        with st.expander("See objects detected"):
-                            for obj_class in set(visual_entity['obj_class']):
-                                st.checkbox(
-                                    label=f"{obj_class}", key=f"{server_path}_{obj_class}", value=False)
+                        checkbox[entity[0]] = False
+                if len(entities.most_common()) > 40:
+                    with st.expander("See more"):
+                        for entity in entities.most_common()[40:]:
+                            checked = st.checkbox(
+                                label=f"{get_entity_name(entity[0])} ({entity[1]})", key=entity[0], value=checkbox[entity[0]])
+                            if checked:
+                                checkbox[entity[0]] = True
+                            else:
+                                checkbox[entity[0]] = False
 
-                        # Generate face_id bounding box
-                        for person_idx, bbox in enumerate(visual_entity['person_bbox']):
-                            draw = ImageDraw.Draw(im)
-                            if st.session_state[f"{server_path}_{visual_entity['person_id'][person_idx]}"]:
-                                draw.rectangle(
-                                    bbox, outline='green')
-                                # Top left corner
-                                draw.text((bbox[0], bbox[1]),
-                                          f"{get_entity_name(visual_entity['person_id'][person_idx])}, Conf: {visual_entity['person_conf'][person_idx]}", font=ImageFont.truetype("DejaVuSans.ttf", 12))
+            with col1:
+                # markers = generate_markers(reports)
+                display_map(markers, checkbox)
 
-                        # Generate obj_det bounding box
-                        for obj_idx, bbox in enumerate(visual_entity['obj_bbox']):
-                            draw = ImageDraw.Draw(im)
-                            if st.session_state[f"{server_path}_{visual_entity['obj_class'][obj_idx]}"]:
-                                draw.rectangle(
-                                    bbox, outline='blue')
-                                # Top left corner
-                                draw.text((bbox[0], bbox[1]),
-                                          f"{visual_entity['obj_class'][obj_idx]}, Conf: {visual_entity['obj_conf'][obj_idx]}", font=ImageFont.truetype("DejaVuSans.ttf", 12))
-                        break
-                st.image(im)
+    elif st.session_state['entity']:
+        col1, col2 = st.columns([8, 2])
+
+        entity_id = st.session_state['entity']
+        with st.spinner(text=f"Loading Report {entity_id}"):
+            entity: Entity = get_entity(entity_id)
+
+        with col1:
+            if entity:
+                st.header(f"**Entity: {entity.title}**")
                 st.write(
-                    report.image_captions[server_path], unsafe_allow_html=True)
-                st.markdown("***")  # Line Break
+                    f"<div style='text-align: justify;'>{entity.body}</div>", unsafe_allow_html=True)
+                st.markdown("""---""")
+                st.markdown(
+                    f"**Last Spotted**: {entity.details['Last Spotted'] if 'Last Spotted' in entity.details else ''}")
+                st.markdown(
+                    f"**Location**: {entity.details['Location'] if 'Location' in entity.details else ''}")
+                st.markdown(f"**Activities:**")
+                for activity in entity.details['Activities'] if 'Activities' in entity.details else '':
+                    st.markdown(f"{activity}")
+                st.markdown(f"**Associated Entities**:")
+                for associated_entity in entity.associated_entities:
+                    st.markdown(
+                        f"<a href='?entity={associated_entity.id}' target='_self'>{associated_entity.title}</a>", unsafe_allow_html=True)
+                st.markdown(f"**Media**:")
 
-    with col2:
-        # For future development
+                # For future development: https://github.com/vivien000/st-clickable-images
+                for image_path in entity.media:
+                    im = Image.open(image_path)
+                    im.thumbnail((256, 256))
+                    st.image(im)
+
+        with col2:
+            if entity:
+                st.header("Reports")
+                for report in entity.associated_reports:
+                    st.subheader(
+                        f"<a href='?report={report.id}' target='_self'>{report.title}</a>", anchor="")
+                    st.write(report.date)
+
+    elif st.session_state['report']:
+        col1, col2 = st.columns([8, 2])
+
+        report_id = st.session_state['report']
+        with st.spinner(text=f"Loading Report {report_id}"):
+            report: Report = get_report(report_id)
+
+        with col1:
+            if report:
+                st.header(f"**Report: {report.title}**")
+                # NOTE: Unsafe
+                st.write(
+                    f"<div style='text-align: justify;'>{report.body}</div>", unsafe_allow_html=True)
+                st.markdown("""---""")
+
+                for server_path, image in report.images.items():
+                    img_bytes = base64.b64decode(image.encode('utf-8'))
+                    im = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+                    # im = Image.fromarray(np.asarray(image).astype(np.uint8))
+                    for visual_entity in report.visual_entities:
+                        if visual_entity["file_name"] != server_path:
+                            continue
+                        else:
+                            # Generate face_id checkbox
+                            for person_id in set(visual_entity['person_id']):
+                                st.checkbox(
+                                    label=f"{get_entity_name(person_id)}", key=f"{server_path}_{person_id}", value=True)
+                            # Generate obj_det checkbox
+                            with st.expander("See objects detected"):
+                                for obj_class in set(visual_entity['obj_class']):
+                                    st.checkbox(
+                                        label=f"{obj_class}", key=f"{server_path}_{obj_class}", value=False)
+
+                            # Generate face_id bounding box
+                            for person_idx, bbox in enumerate(visual_entity['person_bbox']):
+                                draw = ImageDraw.Draw(im)
+                                if st.session_state[f"{server_path}_{visual_entity['person_id'][person_idx]}"]:
+                                    draw.rectangle(
+                                        bbox, outline='green')
+                                    # Top left corner
+                                    draw.text((bbox[0], bbox[1]),
+                                              f"{get_entity_name(visual_entity['person_id'][person_idx])}, Conf: {visual_entity['person_conf'][person_idx]}", font=ImageFont.truetype("DejaVuSans.ttf", 12))
+
+                            # Generate obj_det bounding box
+                            for obj_idx, bbox in enumerate(visual_entity['obj_bbox']):
+                                draw = ImageDraw.Draw(im)
+                                if st.session_state[f"{server_path}_{visual_entity['obj_class'][obj_idx]}"]:
+                                    draw.rectangle(
+                                        bbox, outline='blue')
+                                    # Top left corner
+                                    draw.text((bbox[0], bbox[1]),
+                                              f"{visual_entity['obj_class'][obj_idx]}, Conf: {visual_entity['obj_conf'][obj_idx]}", font=ImageFont.truetype("DejaVuSans.ttf", 12))
+                            break
+                    st.image(im)
+                    st.write(
+                        f"{report.image_captions[server_path] if server_path in report.image_captions else ''}", unsafe_allow_html=True)
+                    st.markdown("***")  # Line Break
+
+        with col2:
+            # For future development
+            pass
+
+    else:
         pass
-
-else:
-    pass

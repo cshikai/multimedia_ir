@@ -1,5 +1,6 @@
 EMB:
   emb_path: '../data/pt_emb'
+  get_emb: True
 
 MTCNN:
   URL: 'http://mtcnn:5000'

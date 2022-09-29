@@ -19,16 +19,15 @@ class EmbeddingDataset():
             self.emb_path = os.path.join(emb_path, '')
             self.id_list, self.embeddings = self._load_embeddings_local()
 
-            if len(self.id_list) > 0: #If not empty
-                self.norm_embeddings = self._norm_transpose_emb(self.embeddings) # Used for cosine similarity 
+            if len(self.id_list) > 0:  # If not empty
+                self.norm_embeddings = self._norm_transpose_emb(
+                    self.embeddings)  # Used for cosine similarity
             else:
-                self.norm_embeddings = []            
-
-
+                self.norm_embeddings = []
 
     def _norm_transpose_emb(self, emb):
         norm_emb = torch.stack([x/torch.linalg.norm(x) for x in emb])
-        norm_emb = torch.transpose(norm_emb,0,1)
+        norm_emb = torch.transpose(norm_emb, 0, 1)
         return norm_emb
 
     def generate_embedding(self, id, folder_path):
@@ -39,30 +38,31 @@ class EmbeddingDataset():
         ------------------------------------
         id (int)            : A unique id for each human entity
         folder_path (str)   : Path to folder containing the images
-        
+
         """
-        folder_path = os.path.join(folder_path, '') # Assert folders string to the right format
-        avg_emb = torch.zeros(512) # Reset Avg Embedding
-        img_count = 0 # Reset Image Count
+        folder_path = os.path.join(
+            folder_path, '')  # Assert folders string to the right format
+        avg_emb = torch.zeros(512)  # Reset Avg Embedding
+        img_count = 0  # Reset Image Count
 
         for i in os.listdir(folder_path):
             face_data = self.mtcnn.crop_faces(folder_path+i)
             if len(face_data['img']) != 0:
-                img_count+=1
+                img_count += 1
                 max_val = np.argmax(face_data['prob'])
                 top_img = [face_data['img'][max_val]]
                 img_embedding = self.inference.infer_with_triton(top_img)
                 img_embedding = torch.from_numpy(img_embedding)
                 avg_emb = avg_emb.add(img_embedding[max_val])
-        if img_count==0:
+        if img_count == 0:
             return []
-        avg_emb=avg_emb.div(img_count)
+        avg_emb = avg_emb.div(img_count)
         # Append new embedding to the list of existing embeddings
-        usqz_emb=torch.unsqueeze(avg_emb, 0)
-        if self.embeddings == []: # empty list
-            self.embeddings=usqz_emb
+        usqz_emb = torch.unsqueeze(avg_emb, 0)
+        if self.embeddings == []:  # empty list
+            self.embeddings = usqz_emb
         else:
-            self.embeddings=torch.cat([self.embeddings, usqz_emb])
+            self.embeddings = torch.cat([self.embeddings, usqz_emb])
         self.norm_embeddings = self._norm_transpose_emb(self.embeddings)
         self.id_list.append(id)
         return avg_emb
@@ -76,34 +76,34 @@ class EmbeddingDataset():
         ------------------------------------
         id (int)            : A unique id for each human entity
         img_dict_list (list): A list of {"images":<b64-encoded image>} dict
-        
+
         """
         # folder_path = os.path.join(folder_path, '') # Assert folders string to the right format
-        avg_emb = torch.zeros(512) # Reset Avg Embedding
-        img_count = 0 # Reset Image Count
-        for i in img_dict_list: 
+        avg_emb = torch.zeros(512)  # Reset Avg Embedding
+        img_count = 0  # Reset Image Count
+        for i in img_dict_list:
             face_data = self.mtcnn.crop_faces_from_b64(i)
             if len(face_data['img']) != 0:
-                img_count+=1
+                img_count += 1
                 max_val = np.argmax(face_data['prob'])
                 top_img = [face_data['img'][max_val]]
                 img_embedding = self.inference.infer_with_triton(top_img)
                 img_embedding = torch.from_numpy(img_embedding)
                 avg_emb = avg_emb.add(img_embedding[max_val])
-        if img_count==0:
+        if img_count == 0:
             return []
-        avg_emb=avg_emb.div(img_count)
+        avg_emb = avg_emb.div(img_count)
 
         if self.local:
             # Append new embedding to the list of existing embeddings
-            usqz_emb=torch.unsqueeze(avg_emb, 0)
-            if self.embeddings == []: # empty list
-                self.embeddings=usqz_emb
+            usqz_emb = torch.unsqueeze(avg_emb, 0)
+            if self.embeddings == []:  # empty list
+                self.embeddings = usqz_emb
             else:
-                self.embeddings=torch.cat([self.embeddings, usqz_emb])
+                self.embeddings = torch.cat([self.embeddings, usqz_emb])
             self.norm_embeddings = self._norm_transpose_emb(self.embeddings)
             self.id_list.append(id)
-            
+
         return avg_emb
 
     def _load_embeddings_local(self):
@@ -132,7 +132,7 @@ class EmbeddingDataset():
             emb_list.append(temp_emb)
 
         emb_list = torch.stack(emb_list)
-        print(len(id_list))
+        # print(len(id_list))
         return id_list, emb_list
 
     def find_id(self, img_dict):

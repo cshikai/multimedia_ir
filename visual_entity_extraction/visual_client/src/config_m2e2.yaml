@@ -4,6 +4,7 @@ infer:
 endpt:
   fn_endpt: http://faceid:8000
   yolo_endpt: http://objdet:8000
+  face_server: http://facedb:8000
 
 ELASTICSEARCH:
   URL: 'https://elasticsearch:9200'

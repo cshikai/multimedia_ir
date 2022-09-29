@@ -45,11 +45,11 @@ if __name__ == '__main__':
             payload = json.dumps({"image": im_b64})
 
             r_fn = requests.post(
-                '{}/infer'.format(config['endpt']['fn_endpt']), data=payload, headers=headers)
+                f"{config['endpt']['fn_endpt']}/infer", data=payload, headers=headers)
             res_fn = json.loads(r_fn.text)
 
             r_yolo = requests.post(
-                '{}/infer'.format(config['endpt']['yolo_endpt']), data=payload, headers=headers)
+                f"{config['endpt']['yolo_endpt']}/infer", data=payload, headers=headers)
             res_yolo = json.loads(r_yolo.text)
 
             detection_dict['file_name'] = file_key
@@ -63,7 +63,14 @@ if __name__ == '__main__':
             detection_dict['person_bbox'] = res_fn['bb']
             detection_dict['person_id'] = id_list
             detection_dict['person_conf'] = res_fn['cos_conf']
-
+            index = 0
+            for face in res_fn['emb']:
+                payload = json.dumps(
+                    {"face": face, "file_name": file_key, "index": index})
+                r_fs = requests.put(
+                    f"{config['endpt']['face_server']}/upload", data=payload, headers=headers)
+                index += 1
+                print(r_fs.text)
             # YOLO Inference
             mask = [True if a > 0.5 else False for a in res_yolo['conf']]
             obj_list = [a if mask[res_yolo['classes'].index(

@@ -66,6 +66,5 @@ class MTCNNManager():
         """
         r = requests.post(self.path, data=json.dumps(
             img_bytes), headers=self.header)
-        print(r.text)
         res = json.loads(r.text)
         return res

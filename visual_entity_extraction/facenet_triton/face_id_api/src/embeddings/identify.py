@@ -132,7 +132,8 @@ class Identify():
     def compare_es(self, img_dict):
         res, embs = self._crop_and_get_emb(img_dict)
         if isinstance(embs, type(None)):
-            return [], [], [], [], []
+            return [], [], [], [], [], []
+        ori_embs = embs
         embs = torch.from_numpy(embs)
         all_cos_id = []
         all_euc_id = []
@@ -205,4 +206,4 @@ class Identify():
             all_euc_id.append(euc_results['hits']['hits'][0]['_id'])
             all_euc_conf.append(euc_results['hits']['hits'][0]['_score'])
         bbox_int = [[int(x) for x in y] for y in res['box']]
-        return all_cos_id, all_cos_conf, all_euc_id, all_euc_conf, bbox_int
+        return all_cos_id, all_cos_conf, all_euc_id, all_euc_conf, bbox_int, ori_embs.tolist()

@@ -288,6 +288,20 @@ services:
     ulimits:
       memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
     shm_size: 32gb # set upper limit for how much shared memory container can use
+  facedb:
+    build: ../face_server
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../face_server/src:/src
+      - ../face_server/embeddings:/embeddings
+    # ports:
+    #   - 8888:8880
+    command: uvicorn main:api --host 0.0.0.0 --reload
+    restart: always
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb # set upper limit for how much shared memory container can use
   # neo4j:
   #   build: neo4j
 
@@ -312,3 +326,17 @@ services:
       ELASTICSEARCH_HOST_PORT: https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
     ports:
       - 8501:8501
+  multimedia_entity_extraction:
+    # runtime: nvidia
+    build: ../multimedia_entity_extraction
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../multimedia_entity_extraction/src:/src
+      - ../multimedia_entity_extraction/data:/data
+      - ../multimedia_entity_extraction/models:/models
+    ports:
+      - 8888:8888
+    ulimits:
+      memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
+    shm_size: 32gb

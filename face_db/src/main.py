@@ -1,10 +1,9 @@
-from http import server
 import os
 from typing import List
 
 import torch
 import json
-import numpy as np
+import re
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -24,16 +23,35 @@ class M2E2EmbMgr:
         self.mapping = None
         self.emb_len = None
         self.all_emb = None
+        self.reverse_map = None
         self._refresh()
+
+    def _natural_sort(self, l):
+        def convert(text): return int(text) if text.isdigit() else text.lower()
+        def alphanum_key(key): return [convert(c)
+                                       for c in re.split('([0-9]+)', key)]
+        return sorted(l, key=alphanum_key)
 
     def _refresh(self):  # Call upon upload
         self.emb_len = len(os.listdir(self.emb_root))
         self.mapping = self._load_mapping()
         self.all_emb = self._load_emb()
+        self.reverse_map = self._get_reverse_map()
+
+    def _get_reverse_map(self):
+        reverse_map = {}
+        for emb_file in self.mapping:
+            file_name = self.mapping[emb_file]["file_name"]
+            index = self.mapping[emb_file]["index"]
+            if not file_name in reverse_map:
+                reverse_map[file_name] = {}
+            reverse_map[file_name][str(index)] = emb_file
+        return reverse_map
 
     def _load_emb(self):
         emb_list = []
         emb_files = os.listdir(self.emb_root)
+        emb_files = self._natural_sort(emb_files)
         for file in emb_files:
             file_emb = torch.load(f"{self.emb_root}/{file}")
             emb_list.append(file_emb)
@@ -57,7 +75,6 @@ class M2E2EmbMgr:
         if self.emb_len == 0:
             self.all_emb = emb_tensor
         else:
-            print(self.all_emb.shape, emb_tensor.shape)
             self.all_emb = torch.cat([self.all_emb, emb_tensor])
         torch.save(emb_tensor, f"{self.emb_root}/{emb_file}")
         self.mapping[emb_file] = {
@@ -69,16 +86,19 @@ class M2E2EmbMgr:
             json.dump(self.mapping, f,  indent=4)
         return "Success"
 
-    def compare(self, source_emb, k):
-        emb_tensor = torch.Tensor(source_emb)
+    def compare(self, img_file, face_index, k):
+        emb_file = self.reverse_map[img_file][face_index]
+        emb_tensor = torch.load(f"{self.emb_root}/{emb_file}")[0]
         emb_tensor = emb_tensor/torch.linalg.norm(emb_tensor)  # Normalisation
         norm_emb = torch.transpose(self.all_emb, 0, 1)
         print(emb_tensor.size(), norm_emb.size())
         cos_sim = torch.matmul(emb_tensor, norm_emb)
         print(cos_sim)
+        # Plus 1 so that it does not count itself
+        k += 1
         topk_cos = torch.topk(cos_sim, k)
-        conf = topk_cos.values.tolist()
-        topk_index = topk_cos.indices.tolist()
+        conf = topk_cos.values.tolist()[1:]
+        topk_index = topk_cos.indices.tolist()[1:]
         print(topk_cos, topk_index)
         similar_entity_files = [self.mapping[f"{i}.pt"] for i in topk_index]
 
@@ -95,7 +115,8 @@ class PopulateFaceEmb(BaseModel):
 
 
 class SourceFaceEmb(BaseModel):
-    face: List[float]
+    img_file: str
+    face_index: int
     k: int
 
 
@@ -116,12 +137,25 @@ def upload_emb(image_data: PopulateFaceEmb):
 @ api.get("/compare/")
 def compare_emb(image_data: SourceFaceEmb):
     image_data = image_data.dict()
-    face_emb = image_data['face']
+    img_file = image_data['img_file']
+    face_index = image_data['face_index']
     k = image_data['k']
 
-    entities, conf = EmbMgr.compare(face_emb, 5)  # Top 5 results
+    entities, conf = EmbMgr.compare(
+        img_file, str(face_index), k)  # Top 5 results
 
     response = {}
     response['files'] = entities
     response['similarity'] = conf
     return response
+
+
+@ api.get("/reverse_map/")
+def reverse_map():
+    return EmbMgr.reverse_map
+
+
+@ api.get("/emb/")
+def embs():
+    print(EmbMgr.all_emb)
+    return EmbMgr.all_emb

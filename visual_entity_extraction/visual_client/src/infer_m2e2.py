@@ -26,7 +26,6 @@ client = Elasticsearch(ELASTIC_URL,  # ca_certs="",
 
 
 if __name__ == '__main__':
-
     img_folder = config['infer']['img_folder']
     for i, subfolder in enumerate(tqdm(os.listdir(img_folder))):
         inference_list = []
@@ -63,14 +62,11 @@ if __name__ == '__main__':
             detection_dict['person_bbox'] = res_fn['bb']
             detection_dict['person_id'] = id_list
             detection_dict['person_conf'] = res_fn['cos_conf']
-            index = 0
-            for face in res_fn['emb']:
+            for index, face in enumerate(res_fn['emb']):
                 payload = json.dumps(
                     {"face": face, "file_name": file_key, "index": index})
                 r_fs = requests.put(
                     f"{config['endpt']['face_server']}/upload", data=payload, headers=headers)
-                index += 1
-                print(r_fs.text)
             # YOLO Inference
             mask = [True if a > 0.5 else False for a in res_yolo['conf']]
             obj_list = [a if mask[res_yolo['classes'].index(

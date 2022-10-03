@@ -4,7 +4,10 @@ import requests
 import numpy as np
 from spacy.lang.en import English
 import os
+import io
+import re
 from PIL import Image
+import base64
 
 import pandas as pd
 from sqlalchemy import Table, MetaData, create_engine
@@ -79,9 +82,11 @@ class UnknownVisualEntityExtractor:
             bounding_boxes = image['person_bbox']
             image_url = image['file_name']
 
-            image_data = self.download_image(image_url)
+            image_data = self.download_image_b64(image_url)
 
-            PIL_image = Image.fromarray(np.uint8(image_data)).convert('RGB')
+            img_bytes = base64.b64decode(image_data.encode('utf-8'))
+            PIL_image = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+
             N = len(entity_ids)
 
             for i in range(N):
@@ -115,6 +120,11 @@ class UnknownVisualEntityExtractor:
         image = np.asarray(r.json()['image'])
         return image
 
+    def download_image_b64(self, server_path):
+        body = {'server_path': server_path}
+        r = requests.get('http://image_server:8000/download/', json=body)
+        return r.json()['image']
+
 
 class UnknownTextEntityExtractor:
 
@@ -134,6 +144,7 @@ class UnknownTextEntityExtractor:
                 linked_text = True
             sentence_index, span_start, span_end = entity['mention_span']
             sentence = sentences[sentence_index]
+            # print("SENTENCE:", sentence, span_start, span_end)
             token_span = self.token_mapper.get_tokens(
                 sentence, entity['mention'], span_start, span_end)
             yield sentences[sentence_index], i, token_span, linked_text
@@ -158,34 +169,68 @@ class TextTokenMapper:
         return sentences
 
     def get_tokens(self, sentence, entity_mention, span_start, span_end):
-        tokens = sentence.split(' ')
-        N = len(tokens)
-        entity_tokens = len(entity_mention.split(' '))
-        cumilative_char_index = 0
-        char_to_token_span = []
 
-        for token_index, token in enumerate(tokens):
-            end_char_index = cumilative_char_index + len(token)
-            char_to_token_span.append(
-                (cumilative_char_index, end_char_index, token_index))
-            cumilative_char_index = end_char_index + 1
-        left = 0
-        char_2_token_spans = {}
-        for right in range(entity_tokens-1, N):
-            left_start_index, left_end_index, left_token_index = char_to_token_span[left]
-            right_start_index, right_end_index, right_token_index = char_to_token_span[right]
-            char_2_token_spans[(left_start_index, right_end_index)] = (
-                left_token_index, right_token_index)
-            left += 1
+        # tokens = re.split('\W+', sentence)
+        # print(sentence[span_start:span_end])
+        # print(sentence)
+        tokens = sentence.split(" ")
+        # print(tokens)
+        char_map = {}
+        char_index = 0
+        for index, token in enumerate(tokens):
+            char_map[char_index] = index
+            char_index += len(token)+1
+        # print(char_map)
+        start_token = char_map[span_start]
 
-        while span_start > 0 and sentence[span_start - 1] != ' ':
-            span_start -= 1
-        while span_end < len(sentence) and sentence[span_end] != ' ':
-            span_end += 1
+        end_token = len(tokens)  # If entity is last token in the sentence
+        for i in char_map:
+            if i < span_end:
+                continue
+            else:
+                end_token = char_map[i]
+                break
 
-        token_span = char_2_token_spans[(span_start, span_end)]
+        # print(' '.join(tokens[start_token:end_token]))
+        return (start_token, end_token)
 
-        return token_span
+    # def get_tokens(self, sentence, entity_mention, span_start, span_end):
+    #     tokens = sentence.split(' ')
+    #     # tokens = re.split('\W+', sentence)
+    #     print(tokens)
+    #     N = len(tokens)
+    #     entity_tokens = len(entity_mention.split(' '))
+    #     # entity_tokens = len(re.split('\W+', entity_mention))
+    #     cumilative_char_index = 0
+    #     char_to_token_span = []
+
+    #     for token_index, token in enumerate(tokens):
+    #         end_char_index = cumilative_char_index + len(token)
+    #         char_to_token_span.append(
+    #             (cumilative_char_index, end_char_index, token_index))
+    #         cumilative_char_index = end_char_index + 1
+    #     print(char_to_token_span)
+    #     left = 0
+    #     char_2_token_spans = {}
+    #     print("START, STOP", entity_tokens-1, N)
+    #     for right in range(entity_tokens-1, N):
+    #         left_start_index, left_end_index, left_token_index = char_to_token_span[left]
+    #         right_start_index, right_end_index, right_token_index = char_to_token_span[right]
+    #         char_2_token_spans[(left_start_index, right_end_index)] = (
+    #             left_token_index, right_token_index)
+    #         left += 1
+
+    #     print(sentence[span_start:span_end])
+    #     while span_start > 0 and sentence[span_start - 1] != ' ':
+    #         span_start -= 1
+    #     while span_end < len(sentence) and sentence[span_end] != ' ':
+    #         print(sentence[span_end])
+    #         span_end += 1
+    #     print(sentence[span_start:span_end])
+    #     print(char_2_token_spans)
+    #     token_span = char_2_token_spans[(span_start, span_end)]
+
+    #     return token_span
 
 
 class VADataReader(DataReader):

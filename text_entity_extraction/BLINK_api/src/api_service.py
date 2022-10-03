@@ -96,7 +96,7 @@ async def link(request: Request):
     results = inference.run_inference()
 
     # entity_ids = [row['entity_id'] for row in results['entities']]
-    results.loc[results["entity_link"] == "Unknown", "entity_link"] = str(-1)
+    # results.loc[results["entity_link"] == "Unknown", "entity_link"] = str(-1)
     # results["entity_link"] = pd.to_numeric(results["entity_link"])
     entity_links = [row['entity_link'] for row in results['entities']]
     entity_links = [entity_link.split("curid=")[-1]

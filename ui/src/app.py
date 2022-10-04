@@ -217,8 +217,20 @@ def get_entity(id: int) -> Entity:
     res = es.search(index="wikipedia", query={"term": {"_id": id}})
     associated_reports = search_reports(
         res['hits']['hits'][0]['_source']['title'])
+    media_res = es.search(index="documents_m2e2", query={
+        "term": {"visual_entities.person_id": id}})
+    sorted_entities = sorted(
+        media_res['hits']['hits'], key=lambda report: report['_source']['timestamp'], reverse=True)
+    visual_entities = [report['_source']['visual_entities']
+                       for report in sorted_entities]
+    media = []
+    for report in visual_entities:
+        for image in report:
+            if id in image['person_id']:
+                image = get_image(image['file_name'])
+                media.append(image)
     result = Entity(id=res['hits']['hits'][0]['_id'],
-                    title=res['hits']['hits'][0]['_source']['title'], body=res['hits']['hits'][0]['_source']['content'], associated_reports=associated_reports)
+                    title=res['hits']['hits'][0]['_source']['title'], body=res['hits']['hits'][0]['_source']['content'], associated_reports=associated_reports, media=media)
     return result
 
 
@@ -372,8 +384,9 @@ if __name__ == '__main__':
                 st.markdown(f"**Media**:")
 
                 # For future development: https://github.com/vivien000/st-clickable-images
-                for image_path in entity.media:
-                    im = Image.open(image_path)
+                for image in entity.media:
+                    img_bytes = base64.b64decode(image.encode('utf-8'))
+                    im = Image.open(io.BytesIO(img_bytes)).convert('RGB')
                     im.thumbnail((256, 256))
                     st.image(im)
 

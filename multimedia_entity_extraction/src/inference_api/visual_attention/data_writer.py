@@ -52,19 +52,21 @@ class VADataWriter(DataWriter):
             )
             heappush(max_heap, heap_item)
 
-        print(max_heap)
+        # print(max_heap)
         while max_heap:
             score, visual_entity_id, text_entity_id, document_id = heappop(
                 max_heap)
-
+            print(score, visual_entity_id, text_entity_id, document_id)
             if -score > self.HEATMAP_THRESHOLD:
                 if visual_entity_id in visual_entities_set and text_entity_id in text_entities_set:
                     text_entities_set.remove(text_entity_id)
                     visual_entities_set.remove(visual_entity_id)
                     new_entity_id = '_'.join(
                         [str(document_id), str(text_entity_id), str(visual_entity_id)])
-                    self.update_elastic(
-                        document_id, text_entity_id, visual_entity_id, new_entity_id)
+                    print("New Entity:\n{};\n {};\n {};\n {}\n".format(document_id, text_entity_id, visual_entity_id, new_entity_id), document_id, text_entity_id,
+                          visual_entity_id, new_entity_id)
+                    # self.update_elastic(
+                    #     document_id, text_entity_id, visual_entity_id, new_entity_id)
             else:
                 break
 

@@ -53,7 +53,11 @@ class VALiveDataReader(DataReader):
                 visual_entities)
 
             for image_url, image_entity_index, image_data, bounding_box, object_type, linked_image in image_generator:
+                # print("Looping", image_url)
+                text_generator = self.text_entity_extractor.get_generator(
+                    text_content, text_entities)  # Text Generator is lost after each complete iteration
                 for text, text_entity_index, token_span, linked_text in text_generator:
+                    # print(linked_image, linked_text)
                     if not (linked_image and linked_text):
 
                         yield {
@@ -91,7 +95,7 @@ class UnknownVisualEntityExtractor:
 
             for i in range(N):
                 entity_id = entity_ids[i]
-                if entity_id == -1:
+                if entity_id == "-1":
                     linked_image = False
                 else:
                     linked_image = True
@@ -135,10 +139,11 @@ class UnknownTextEntityExtractor:
 
         N = len(text_entities)
         sentences = self.token_mapper.split_sentences(text)
+        # print("Sentence:", sentences)
 
         for i in range(N):
             entity = text_entities[i]
-            if entity['entity_link'] == -1:
+            if entity['entity_link'] == "-1":
                 linked_text = False
             else:
                 linked_text = True

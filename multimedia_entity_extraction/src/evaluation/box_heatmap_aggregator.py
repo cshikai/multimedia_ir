@@ -50,7 +50,6 @@ class BoxHeatmapAggregator:
         heatmap_window = word_image_heatmap[top_bound:bottom_bound+1,
                                             left_bound: right_bound+1, token_span[0]: token_span[1]+1, :]
 
-        print(heatmap_window.reshape(-1, heatmap_window.shape[3]).shape)
         # Reshape flattens h,w,t to a single dimension. (i.e. 2x2x4x4 -> 16x4)
         # Their weights are then aggregated to find which of the 4 layers have the highest activation
         if self.MODE == 'MAX':

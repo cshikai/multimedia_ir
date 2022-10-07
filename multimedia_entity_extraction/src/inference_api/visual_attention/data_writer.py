@@ -56,7 +56,7 @@ class VADataWriter(DataWriter):
         while max_heap:
             score, visual_entity_id, text_entity_id, document_id = heappop(
                 max_heap)
-            print(score, visual_entity_id, text_entity_id, document_id)
+            # print(score, visual_entity_id, text_entity_id, document_id)
             if -score > self.HEATMAP_THRESHOLD:
                 if visual_entity_id in visual_entities_set and text_entity_id in text_entities_set:
                     text_entities_set.remove(text_entity_id)

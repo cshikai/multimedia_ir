@@ -1,0 +1,34 @@
+# training: !!bool "true"
+# device: "cuda"
+
+model_name: "pytorch_track_classification"
+max_batch: 16
+inputs: 
+    INPUT__0:
+        shape: 
+            - -1
+            - -1
+            - 23
+        type: 'FP64'
+    INPUT__1:
+        shape: 
+            - -1
+            - -1
+            - 4
+        type: 'INT64'
+    INPUT__2:
+        shape: 
+            - -1
+            - -1
+            - 7
+        type: 'INT64'
+    INPUT__3:
+        shape: 
+            - -1
+            - 1
+        type: 'INT64'
+outputs:
+    OUTPUT__0:
+        type: 'FP64'
+
+

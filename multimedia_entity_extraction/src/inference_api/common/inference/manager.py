@@ -41,7 +41,6 @@ class InferenceManager(ABC):
         data_generator = self.reader.get_generator(indexes)
         data_count = 0
         for data in data_generator:
-
             if data_count == 0:
                 batch_data = {}
             data_count += 1

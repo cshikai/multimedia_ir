@@ -216,7 +216,7 @@ def get_entity(id: int) -> Entity:
     # results = Entity(id=1, title="Lewis Hamilton", details={'Last Spotted': 'Kenya (17 Aug 2022)', 'Location': 'Pokot District of the eastern Karamoja region in Kenya', 'Activities': ['Lewis Hamilton, 37, enjoys relaxing trip to Rwanda during F1 summer break', 'Hamilton came second to Max Verstappen in the recent Hungarian Grand Prix']}, associated_entities=[Entity(id=2, title="Max Verstappen")], media=['/images/lewis-1.jpg', '/images/lewis-2.jpg', '/images/lewis-3.jpg'], associated_reports=[Report(id=1, title="Hamilton claims Vettel 'incomparable' to other F1 stars", date="23 Dec 2020"), Report(id=2, title="Lewis Hamilton explains why he turned Tom Cruise down", date="20 Dec 2020"), Report(id=3, title="Lewis Hamilton: Sebastian Vettel has made F1 feel less lonely", date="09 Dec 2020")])
     res = es.search(index="wikipedia", query={"term": {"_id": id}})
     associated_res = es.search(index="documents_m2e2", query={
-        "bool": {"should": [{"term": {"text_entities.entity_link": id}}, {"term": {"visual_entities.person_id": id}}]}})
+        "bool": {"should": [{"term": {"text_entities.entity_link": id}}, {"term": {"visual_entities.person_id": id}}, {"term": {"text_caption_entities.entity_links": id}}]}})
     associated_reports = []
     for report in associated_res['hits']['hits']:
         text_entities = report['_source']['text_entities'] if 'text_entities' in report['_source'] else [
@@ -235,9 +235,26 @@ def get_entity(id: int) -> Entity:
                 media.append(
                     {"image": image, "ID": report.id, "timestamp": report.timestamp})
     details = {}
-    details['Last Spotted'] = f"<a href = '?report={associated_reports_sorted[0].id}' target = '_self'> {associated_reports_sorted[0].timestamp} </a> "
+    details['Last Spotted'] = f"<a href = '?report={media[0]['ID']}' target = '_self'> {media[0]['timestamp']} </a>" if media else ""
+
+    def extract_entities(reports: List[Report]) -> Tuple[Counter, defaultdict]:
+        entities = Counter()
+        for report in reports:
+            text_entities = [entity['entity_link']
+                             for entity in report.text_entities if entity['entity_link'] != "-1"]
+            entities.update(set(text_entities))
+            visual_person_entities = [entity['person_id']
+                                      for entity in report.visual_entities]
+            visual_entities = [
+                person_id for person_ids in visual_person_entities for person_id in person_ids if person_id != "-1"]
+            entities.update(set(visual_entities))
+        return entities
+
+    associated_entities = extract_entities(associated_reports_sorted)
+    del associated_entities[id]  # remove self from associated entities
+
     result = Entity(id=res['hits']['hits'][0]['_id'],
-                    title=res['hits']['hits'][0]['_source']['title'], body=res['hits']['hits'][0]['_source']['content'], associated_reports=associated_reports, media=media, details=details)
+                    title=res['hits']['hits'][0]['_source']['title'], body=res['hits']['hits'][0]['_source']['content'], associated_reports=associated_reports, media=media, details=details, associated_entities=[(Entity(id=ID, title=get_entity_name(ID)), count) for (ID, count) in associated_entities.most_common(10)])
     return result
 
 
@@ -387,7 +404,7 @@ if __name__ == '__main__':
                 st.markdown(f"**Associated Entities**:")
                 for associated_entity in entity.associated_entities:
                     st.markdown(
-                        f"<a href='?entity={associated_entity.id}' target='_self'>{associated_entity.title}</a>", unsafe_allow_html=True)
+                        f"<a href='?entity={associated_entity[0].id}' target='_self'>{associated_entity[0].title} ({associated_entity[1]})</a>", unsafe_allow_html=True)
                 st.markdown(f"**Media**:")
 
                 # For future development: https://github.com/vivien000/st-clickable-images

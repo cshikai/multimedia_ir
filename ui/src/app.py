@@ -215,22 +215,29 @@ def search_entities(query: str) -> List[Entity]:
 def get_entity(id: int) -> Entity:
     # results = Entity(id=1, title="Lewis Hamilton", details={'Last Spotted': 'Kenya (17 Aug 2022)', 'Location': 'Pokot District of the eastern Karamoja region in Kenya', 'Activities': ['Lewis Hamilton, 37, enjoys relaxing trip to Rwanda during F1 summer break', 'Hamilton came second to Max Verstappen in the recent Hungarian Grand Prix']}, associated_entities=[Entity(id=2, title="Max Verstappen")], media=['/images/lewis-1.jpg', '/images/lewis-2.jpg', '/images/lewis-3.jpg'], associated_reports=[Report(id=1, title="Hamilton claims Vettel 'incomparable' to other F1 stars", date="23 Dec 2020"), Report(id=2, title="Lewis Hamilton explains why he turned Tom Cruise down", date="20 Dec 2020"), Report(id=3, title="Lewis Hamilton: Sebastian Vettel has made F1 feel less lonely", date="09 Dec 2020")])
     res = es.search(index="wikipedia", query={"term": {"_id": id}})
-    associated_reports = search_reports(
-        res['hits']['hits'][0]['_source']['title'])
-    media_res = es.search(index="documents_m2e2", query={
-        "term": {"visual_entities.person_id": id}})
-    sorted_entities = sorted(
-        media_res['hits']['hits'], key=lambda report: report['_source']['timestamp'], reverse=True)
-    visual_entities = [report['_source']['visual_entities']
-                       for report in sorted_entities]
+    associated_res = es.search(index="documents_m2e2", query={
+        "bool": {"should": [{"term": {"text_entities.entity_link": id}}, {"term": {"visual_entities.person_id": id}}]}})
+    associated_reports = []
+    for report in associated_res['hits']['hits']:
+        text_entities = report['_source']['text_entities'] if 'text_entities' in report['_source'] else [
+        ]
+        visual_entities = report['_source']['visual_entities'] if report['_source']['images'] else [
+        ]
+        associated_reports.append(
+            Report(id=report['_source']['ID'], title=report['_id'], timestamp=report['_source']['timestamp'], text_entities=text_entities, visual_entities=visual_entities))
+    associated_reports_sorted = sorted(
+        associated_reports, key=lambda report: report.timestamp, reverse=True)
     media = []
-    for report in visual_entities:
-        for image in report:
+    for report in associated_reports_sorted:
+        for image in report.visual_entities:
             if id in image['person_id']:
                 image = get_image(image['file_name'])
-                media.append(image)
+                media.append(
+                    {"image": image, "ID": report.id, "timestamp": report.timestamp})
+    details = {}
+    details['Last Spotted'] = f"<a href = '?report={associated_reports_sorted[0].id}' target = '_self'> {associated_reports_sorted[0].timestamp} </a> "
     result = Entity(id=res['hits']['hits'][0]['_id'],
-                    title=res['hits']['hits'][0]['_source']['title'], body=res['hits']['hits'][0]['_source']['content'], associated_reports=associated_reports, media=media)
+                    title=res['hits']['hits'][0]['_source']['title'], body=res['hits']['hits'][0]['_source']['content'], associated_reports=associated_reports, media=media, details=details)
     return result
 
 
@@ -371,7 +378,7 @@ if __name__ == '__main__':
                     f"<div style='text-align: justify;'>{entity.body}</div>", unsafe_allow_html=True)
                 st.markdown("""---""")
                 st.markdown(
-                    f"**Last Spotted**: {entity.details['Last Spotted'] if 'Last Spotted' in entity.details else ''}")
+                    f"**Last Spotted**: {entity.details['Last Spotted'] if 'Last Spotted' in entity.details else ''}", unsafe_allow_html=True)
                 st.markdown(
                     f"**Location**: {entity.details['Location'] if 'Location' in entity.details else ''}")
                 st.markdown(f"**Activities:**")
@@ -385,10 +392,14 @@ if __name__ == '__main__':
 
                 # For future development: https://github.com/vivien000/st-clickable-images
                 for image in entity.media:
-                    img_bytes = base64.b64decode(image.encode('utf-8'))
+                    img_bytes = base64.b64decode(
+                        image['image'].encode('utf-8'))
                     im = Image.open(io.BytesIO(img_bytes)).convert('RGB')
                     im.thumbnail((256, 256))
-                    st.image(im)
+                    st.image(
+                        im)
+                    st.markdown(
+                        f"<a href='?entity={image['ID']}' target='_self'>View Report</a>  ({image['timestamp']})", unsafe_allow_html=True)
 
         with col2:
             if entity:

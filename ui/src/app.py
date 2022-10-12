@@ -106,18 +106,24 @@ def generate_hypertext(text_entities: List[Dict], body: str):
     return hypertext
 
 
-def generate_hypertext_caption(text_entities: Dict, body: str):
+def generate_hypertext_caption(text_caption_entity: Dict, body: str):
     hypertext = body
-    entity_length = [len(entity) for entity in text_entities['mentions']]
+    sorted_entities = sorted(zip(
+        text_caption_entity['mentions'], text_caption_entity['entity_links']), key=lambda item: len(item[0]), reverse=True)
+    # entity_length = [len(entity)
+    #  for entity in text_caption_entities['mentions']]
     # Sort entities such that the longer mentions get replaced first
-    sorted_entities = [x for _, x in sorted(
-        zip(entity_length, text_entities['mentions']), reverse=True)]
-    sorted_links = [x for _, x in sorted(
-        zip(entity_length, text_entities['entity_links']), reverse=True)]
-    for idx, mention in enumerate(sorted_entities):
-        if mention != " " and sorted_links[idx] != "-1":
+    # sorted_entities = [x for _, x in sorted(
+    #     zip(entity_length, text_caption_entities['mentions']), reverse=True)]
+    # sorted_links = [x for _, x in sorted(
+    #     zip(entity_length, text_caption_entities['entity_links']), reverse=True)]
+    # sorted_entities = sorted(text_caption_entity,
+    #                          key=lambda entity: len(entity['mentions']))
+
+    for entity in sorted_entities:
+        if entity[0] != " " and entity[1] != "-1":
             hypertext = re.sub(
-                fr"\b{mention}\b", f"<a href='?entity={sorted_links[idx]}' target='_self'>{mention}</a>", hypertext)
+                fr"\b{entity[0]}\b", f"<a href='?entity={entity[1]}' target='_self'>{entity[0]}</a>", hypertext)
     return hypertext
 
 

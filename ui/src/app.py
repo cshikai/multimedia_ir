@@ -29,12 +29,13 @@ es = Elasticsearch(ELASTIC_URL,
 
 
 class Report:
-    def __init__(self, id, title="", body="", date="", text_entities=[], images={}, image_captions=[], visual_entities=[], geo_data=[], timestamp=""):
+    def __init__(self, id, title="", body="", date="", text_entities=[], text_caption_entities=[], images={}, image_captions=[], visual_entities=[], geo_data=[], timestamp=""):
         self.id = id
         self.title = title
         self.body = body
         self.date = date
         self.text_entities = text_entities
+        self.text_caption_entities = text_caption_entities
         self.images = images
         self.image_captions = image_captions
         self.visual_entities = visual_entities
@@ -110,16 +111,6 @@ def generate_hypertext_caption(text_caption_entity: Dict, body: str):
     hypertext = body
     sorted_entities = sorted(zip(
         text_caption_entity['mentions'], text_caption_entity['entity_links']), key=lambda item: len(item[0]), reverse=True)
-    # entity_length = [len(entity)
-    #  for entity in text_caption_entities['mentions']]
-    # Sort entities such that the longer mentions get replaced first
-    # sorted_entities = [x for _, x in sorted(
-    #     zip(entity_length, text_caption_entities['mentions']), reverse=True)]
-    # sorted_links = [x for _, x in sorted(
-    #     zip(entity_length, text_caption_entities['entity_links']), reverse=True)]
-    # sorted_entities = sorted(text_caption_entity,
-    #                          key=lambda entity: len(entity['mentions']))
-
     for entity in sorted_entities:
         if entity[0] != " " and entity[1] != "-1":
             hypertext = re.sub(
@@ -146,7 +137,6 @@ def get_entity_name(id: int) -> str:
 @ st.experimental_memo(show_spinner=False)
 def search_reports(query: str, start_date=None, end_date=None) -> List[Report]:
     es_query = {"bool": {
-        "filter": {"match_all": {}},
         "minimum_should_match": 1,
         "should": [{"match": {"content": query}}, {"match": {"image_captions": query}}]}
     }
@@ -229,8 +219,10 @@ def get_entity(id: int) -> Entity:
         ]
         visual_entities = report['_source']['visual_entities'] if report['_source']['images'] else [
         ]
+        text_caption_entities = report['_source']['text_caption_entities'] if report['_source']['images'] else [
+        ]
         associated_reports.append(
-            Report(id=report['_source']['ID'], title=report['_id'], timestamp=report['_source']['timestamp'], text_entities=text_entities, visual_entities=visual_entities))
+            Report(id=report['_source']['ID'], title=report['_id'], timestamp=report['_source']['timestamp'], text_entities=text_entities, visual_entities=visual_entities, text_caption_entities=text_caption_entities))
     associated_reports_sorted = sorted(
         associated_reports, key=lambda report: report.timestamp, reverse=True)
     media = []
@@ -248,12 +240,16 @@ def get_entity(id: int) -> Entity:
         for report in reports:
             text_entities = [entity['entity_link']
                              for entity in report.text_entities if entity['entity_link'] != "-1"]
-            entities.update(set(text_entities))
             visual_person_entities = [entity['person_id']
                                       for entity in report.visual_entities]
             visual_entities = [
                 person_id for person_ids in visual_person_entities for person_id in person_ids if person_id != "-1"]
-            entities.update(set(visual_entities))
+            text_caption_nested_entities = [entity['entity_links']
+                                            for entity in report.text_caption_entities]
+            text_caption_entities = [
+                entity for nested_entities in text_caption_nested_entities for entity in nested_entities if entity != "-1"]
+            entities.update(
+                set(text_entities + visual_entities + text_caption_entities))
         return entities
 
     associated_entities = extract_entities(associated_reports_sorted)

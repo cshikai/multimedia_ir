@@ -110,16 +110,6 @@ def generate_hypertext_caption(text_caption_entity: Dict, body: str):
     hypertext = body
     sorted_entities = sorted(zip(
         text_caption_entity['mentions'], text_caption_entity['entity_links']), key=lambda item: len(item[0]), reverse=True)
-    # entity_length = [len(entity)
-    #  for entity in text_caption_entities['mentions']]
-    # Sort entities such that the longer mentions get replaced first
-    # sorted_entities = [x for _, x in sorted(
-    #     zip(entity_length, text_caption_entities['mentions']), reverse=True)]
-    # sorted_links = [x for _, x in sorted(
-    #     zip(entity_length, text_caption_entities['entity_links']), reverse=True)]
-    # sorted_entities = sorted(text_caption_entity,
-    #                          key=lambda entity: len(entity['mentions']))
-
     for entity in sorted_entities:
         if entity[0] != " " and entity[1] != "-1":
             hypertext = re.sub(
@@ -248,12 +238,11 @@ def get_entity(id: int) -> Entity:
         for report in reports:
             text_entities = [entity['entity_link']
                              for entity in report.text_entities if entity['entity_link'] != "-1"]
-            entities.update(set(text_entities))
             visual_person_entities = [entity['person_id']
                                       for entity in report.visual_entities]
             visual_entities = [
                 person_id for person_ids in visual_person_entities for person_id in person_ids if person_id != "-1"]
-            entities.update(set(visual_entities))
+            entities.update(set(text_entities + visual_entities))
         return entities
 
     associated_entities = extract_entities(associated_reports_sorted)

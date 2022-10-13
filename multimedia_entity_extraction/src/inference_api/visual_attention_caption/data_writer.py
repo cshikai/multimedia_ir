@@ -23,7 +23,7 @@ class VADataWriter(DataWriter):
                                     basic_auth=('elastic', 'changeme'),
                                     verify_certs=False
                                     )
-        self.HEATMAP_THRESHOLD = 0.0
+        self.HEATMAP_THRESHOLD = 0.4
 
     def write(self, **kwargs):
 
@@ -42,7 +42,6 @@ class VADataWriter(DataWriter):
                 image_urls[i]+'_'+object_types[i] + '_' + str(visual_entities_index[i]))
         text_entities_set = set(text_entities_index)
         visual_entities_set = set(visual_entities_ids)
-
         for i in range(N):
             heap_item = (
                 -aggregated_heatmap_scores[i],
@@ -52,23 +51,44 @@ class VADataWriter(DataWriter):
             )
             heappush(max_heap, heap_item)
 
-        # print(max_heap)
+        print("HEAP LENGTH", len(max_heap))
+        print("vis set", visual_entities_set)
+        print("text set", text_entities_set)
+        ##############
+        document_id_list = []
+        text_entity_id_list = []
+        visual_entity_id_list = []
+        new_entity_id_list = []
+        ##############
+        count = 0
         while max_heap:
             score, visual_entity_id, text_entity_id, document_id = heappop(
                 max_heap)
             # print(score, visual_entity_id, text_entity_id, document_id)
             if -score > self.HEATMAP_THRESHOLD:
+                print("Score", -score)
+                count += 1
                 if visual_entity_id in visual_entities_set and text_entity_id in text_entities_set:
                     text_entities_set.remove(text_entity_id)
                     visual_entities_set.remove(visual_entity_id)
                     new_entity_id = '_'.join(
                         [str(document_id), str(text_entity_id), str(visual_entity_id)])
-                    print("New Entity:\n{};\n {};\n {};\n {}\n".format(
-                        document_id, text_entity_id, visual_entity_id, new_entity_id))
-                    # self.update_elastic(
-                    #     document_id, text_entity_id, visual_entity_id, new_entity_id)
+                    # print("New Entity:{}; {}; {}; {}\n".format(
+                    # document_id, text_entity_id, visual_entity_id, new_entity_id))
+                ##########
+                    document_id_list.append(document_id)
+                    text_entity_id_list.append(text_entity_id)
+                    visual_entity_id_list.append(visual_entity_id)
+                    new_entity_id_list.append(new_entity_id)
+                ##########
+                # self.update_elastic(
+                #     document_id, text_entity_id, visual_entity_id, new_entity_id)
             else:
                 break
+        print("count:", count)
+        print("text ent id", text_entity_id_list)
+        print("viz ent id", visual_entity_id_list)
+        return text_entity_id_list, visual_entity_id_list
 
     def update_elastic(self, document_id, text_entity_id, visual_entity_id, new_id):
         pass
@@ -81,9 +101,6 @@ class VADataWriter(DataWriter):
 
         visual_entities = result['_source']['visual_entities']
         text_entities = result['_source']['text_entities']
-        print(text_entities[text_entity_id]['mention'])
-        print(image_url)
-        print(object_type)
         # self.client.update(index='documents',id=document_id,
         #         body={"doc":'es' })
         # client.update(index='documents',id=document_id,doc=new_doc)

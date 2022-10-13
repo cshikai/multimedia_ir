@@ -42,19 +42,25 @@ class VALiveDataReader(DataReader):
             text_content = result['_source']['image_captions']
 
             # For each image in the article
-            for img_ent, text_ent, caption in zip(visual_entities, text_caption_entities, text_content):
+            for index, (img_ent, text_ent, caption) in enumerate(zip(visual_entities, text_caption_entities, text_content)):
                 image_generator = self.visual_entity_extractor.get_generator([
                                                                              img_ent])
-                text_generator = self.text_entity_extractor.get_generator(
-                    caption, text_ent)
-                for image_url, image_entity_index, image_data, bounding_box, object_type, linked_image in image_generator:  # For each visual entity
+                # text_generator = self.text_entity_extractor.get_generator(
+                #     caption, text_ent)
+                # For each visual entity
+                for image_url, image_entity_index, image_data, bounding_box, object_type, linked_image in (image_generator):
+                    print("IMAGE:", object_type)
+                    text_generator = self.text_entity_extractor.get_generator(
+                        caption, text_ent)
                     for text, text_entity_index, token_span, linked_text in text_generator:  # For each textual entity
+                        print("TEXT:", token_span)
                         if not (linked_image and linked_text):
+                            print(image_url)
                             yield {
                                 'index': document_id,
                                 'image_url': image_url,
                                 'text': text,
-                                'text_entity_index': text_entity_index,
+                                'text_entity_index': "{}_{}".format(str(index), str(text_entity_index)),
                                 'image_entity_index': image_entity_index,
                                 'image': image_data,
                                 'token_span': token_span,
@@ -80,9 +86,7 @@ class UnknownVisualEntityExtractor:
 
             img_bytes = base64.b64decode(image_data.encode('utf-8'))
             PIL_image = Image.open(io.BytesIO(img_bytes)).convert('RGB')
-
             N = len(entity_ids)
-
             for i in range(N):
                 entity_id = entity_ids[i]
                 if entity_id == "-1":
@@ -93,8 +97,8 @@ class UnknownVisualEntityExtractor:
                 bounding_box = bounding_boxes[i]
                 reshaped_bounding_boxes = [
                     (bounding_box[0], bounding_box[1]), (bounding_box[2], bounding_box[3])]
-                yield image_url, i, PIL_image, reshaped_bounding_boxes, object_type, linked_image
 
+                yield image_url, i, PIL_image, reshaped_bounding_boxes, object_type, linked_image
             object_bounding_boxes = image['obj_bbox']
             object_classes = image['obj_class']
             object_confidence = image['obj_conf']

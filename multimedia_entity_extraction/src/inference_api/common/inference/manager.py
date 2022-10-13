@@ -50,7 +50,6 @@ class InferenceManager(ABC):
                 batch_data[key] = batch_data.get(key, []) + [value]
 
             if data_count == self.triton_manager.triton_cfg['max_batch']:
-
                 self._infer_single_batch(batch_data)
                 data_count = 0
 
@@ -58,9 +57,10 @@ class InferenceManager(ABC):
             self._infer_single_batch(batch_data)
 
         if self.output:
-            self.writer.write(**self.output)
+            text_entity_id_list, visual_entity_id_list = self.writer.write(
+                **self.output)
 
-        return self.output
+        return self.output, text_entity_id_list, visual_entity_id_list
 
     def _infer_single_batch(self, batch_data):
         '''

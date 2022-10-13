@@ -10,6 +10,7 @@ from .visual_model import VGG
 
 class CombinedModel(torch.nn.Module):
     # LOCAL_VISUAL_ATTENTION_MODEL_PATH = '/models/flickr_trained/model.ckpt'
+    # LOCAL_VISUAL_ATTENTION_MODEL_PATH = '/models/flickr_vg_mscoco_trained/model.ckpt'
     LOCAL_VISUAL_ATTENTION_MODEL_PATH = '/models/m2e2/model.ckpt'
 
     def __init__(self) -> None:

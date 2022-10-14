@@ -55,7 +55,7 @@ def merge_edge(source_node_label, source_node_attribute, target_node_label, targ
         source_attributes = "{"+", ".join([k+" : '"+str(source_node_attribute[k]).replace("'","").encode("ascii", "ignore").decode()+"'" for k in source_node_attribute.keys()])+"}"
         target_attributes = "{"+", ".join([k+" : '"+str(target_node_attribute[k]).replace("'","").encode("ascii", "ignore").decode()+"'" for k in target_node_attribute.keys()])+"}"
         edge_attributes = "{"+", ".join([k+" : '"+edge_attributes[k]+"'" for k in edge_attributes.keys()])+"}"
-        return session.run("MATCH (s:{} {}), (t:{} {}) MERGE (s)<-[e:{} {}]-(t) RETURN e".format(source_node_label, source_attributes, target_node_label, target_attributes, relation_type ,edge_attributes))#.single().value()
+        return session.run("MATCH (s:{} {}), (t:{} {}) MERGE (s)-[e:{} {}]->(t) RETURN e".format(source_node_label, source_attributes, target_node_label, target_attributes, relation_type ,edge_attributes))#.single().value()
 
 def _generate_nodes(node_df, db=None):
     for idx, node in node_df.iterrows():
@@ -72,9 +72,9 @@ def _generate_edges(entities_triples_df, relations_dict, db=None):
     for idx, triple in entities_triples_df.iterrows():
         # Can just use the universal node label since node_id already uniquely identifies the node
         source_node_label = "Entity"
-        source_node_attributes = {"entity": triple.entity}
+        source_node_attributes = {"entity": triple.subject}
         target_node_label = "Entity"
-        target_node_attributes = {"entity": triple.linked_from_entity}
+        target_node_attributes = {"entity": triple.object}
         relation_type = triple.relation
         edge_attributes = {"relation_id": str(relations_dict[triple.relation])}
         merge_edge(source_node_label, source_node_attributes, target_node_label, target_node_attributes, relation_type, edge_attributes,db)

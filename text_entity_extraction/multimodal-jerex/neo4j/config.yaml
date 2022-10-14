@@ -3,3 +3,6 @@ neo4j:
   user: neo4j              
   pwd: password
   db: default
+
+data:
+  relations_data_path: relations.csv

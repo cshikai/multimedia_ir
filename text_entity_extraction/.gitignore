@@ -3,7 +3,6 @@ elastdocker
 elasticsearch_volume
 multimodal-jerex/cv
 multimodal-jerex/data/models
-multimodal-jerex/notebooks
 multimodal-jerex/outputs
 multimodal-jerex/tb
 venv

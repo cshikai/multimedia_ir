@@ -1,6 +1,7 @@
 import yaml
 import re
 import ast
+import pandas as pd
 
 from neo4j import GraphDatabase
 
@@ -56,9 +57,9 @@ def merge_edge(source_node_label, source_node_attribute, target_node_label, targ
         edge_attributes = "{"+", ".join([k+" : '"+edge_attributes[k]+"'" for k in edge_attributes.keys()])+"}"
         return session.run("MATCH (s:{} {}), (t:{} {}) MERGE (s)<-[e:{} {}]-(t) RETURN e".format(source_node_label, source_attributes, target_node_label, target_attributes, relation_type ,edge_attributes))#.single().value()
 
-def _generate_nodes(ontology_type,node_df, db=None):
+def _generate_nodes(node_df, db=None):
     for idx, node in node_df.iterrows():
-      node_labels = [re.sub('[^A-Za-z0-9]+', '_', node.main_ontology_type),'Entity']
+      node_labels = ['Entity']
       node_attributes = ast.literal_eval(node.metadata)
 #       for k,v in node_attributes.items():
 #         print(k,": ",v)
@@ -66,9 +67,8 @@ def _generate_nodes(ontology_type,node_df, db=None):
       merge_node(node_labels, node_attributes, db)
 
     create_index("entity_id_index", "Entity", "wikiPageID",db)
-    create_index("{}_index".format(re.sub('[^A-Za-z0-9]+', '_', node.main_ontology_type)), re.sub('[^A-Za-z0-9]+', '_', node.main_ontology_type), 'wikiPageID',db)
     
-def _generate_edges(entities_triples_df, db=None):
+def _generate_edges(entities_triples_df, relations_dict, db=None):
     for idx, triple in entities_triples_df.iterrows():
         # Can just use the universal node label since node_id already uniquely identifies the node
         source_node_label = "Entity"
@@ -92,5 +92,16 @@ if __name__ == '__main__':
     for entity_type in config['graph']['node_types']:
         conn.query('CREATE CONSTRAINT {}s IF NOT EXISTS ON (x:{})     ASSERT x.id IS UNIQUE'.format(re.sub('[^A-Za-z0-9]+', '_', entity_type.lower()),re.sub('[^A-Za-z0-9]+', '_', entity_type)), db=config['neo4j']['db'])
 
+    relations_dataframe = pd.read_csv(config['data']['relations_data_path'])
+    _generate_nodes(relations_dataframe,db=config['neo4j']['db'])
 
+    unique_relations = list(relations_dataframe.relation.unique())
+    relations_dict = {}
+    count = 0
+    
+    for relation in unique_relations:
+        relations_dict[relation] = count
+        count += 1
 
+    _generate_edges(relations_dataframe,relations_dict)
+    

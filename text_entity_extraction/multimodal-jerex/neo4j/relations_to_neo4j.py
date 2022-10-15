@@ -1,4 +1,5 @@
 import yaml
+import json
 import re
 import ast
 import pandas as pd
@@ -60,6 +61,7 @@ def merge_edge(source_node_label, source_node_attribute, target_node_label, targ
 def _generate_nodes(node_df, db=None):
     for idx, node in node_df.iterrows():
       node_labels = ['Entity']
+      print(node.metadata)
       node_attributes = ast.literal_eval(node.metadata)
 #       for k,v in node_attributes.items():
 #         print(k,": ",v)
@@ -75,33 +77,29 @@ def _generate_edges(entities_triples_df, relations_dict, db=None):
         source_node_attributes = {"entity": triple.subject}
         target_node_label = "Entity"
         target_node_attributes = {"entity": triple.object}
-        relation_type = triple.relation
+        relation_type = triple.relation.replace(" ","_")
+        relation_type = re.sub('[^A-Za-z0-9]+', '_', relation_type)
         edge_attributes = {"relation_id": str(relations_dict[triple.relation])}
         merge_edge(source_node_label, source_node_attributes, target_node_label, target_node_attributes, relation_type, edge_attributes,db)
 
 
 if __name__ == '__main__':
 
-    with open("neo4j/config.yaml", "r") as f:
+    with open("config.yaml", "r") as f:
         config = yaml.load(f)
 
     conn = Neo4jConnection(uri= config['neo4j']['uri'],
                        user=config['neo4j']['user'],              
                        pwd=config['neo4j']['pwd'])
 
-    for entity_type in config['graph']['node_types']:
-        conn.query('CREATE CONSTRAINT {}s IF NOT EXISTS ON (x:{})     ASSERT x.id IS UNIQUE'.format(re.sub('[^A-Za-z0-9]+', '_', entity_type.lower()),re.sub('[^A-Za-z0-9]+', '_', entity_type)), db=config['neo4j']['db'])
+    conn.query('CREATE CONSTRAINT {}s IF NOT EXISTS ON (x:{})     ASSERT x.id IS UNIQUE'.format("entity", "Entity"), db=config['neo4j']['db'])
 
+    nodes_dataframe = pd.read_csv(config['data']['entities_data_path'])
+    _generate_nodes(nodes_dataframe,db=config['neo4j']['db'])
+
+    relations_dict_file = open(config['graph']['relations_dict_path'])
+    relations_dict = json.load(relations_dict_file)
     relations_dataframe = pd.read_csv(config['data']['relations_data_path'])
-    _generate_nodes(relations_dataframe,db=config['neo4j']['db'])
-
-    unique_relations = list(relations_dataframe.relation.unique())
-    relations_dict = {}
-    count = 0
-    
-    for relation in unique_relations:
-        relations_dict[relation] = count
-        count += 1
-
+    relations_dataframe.drop_duplicates(inplace=True)
     _generate_edges(relations_dataframe,relations_dict)
     

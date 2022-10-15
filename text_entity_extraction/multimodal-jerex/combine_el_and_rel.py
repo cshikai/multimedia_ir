@@ -3,14 +3,12 @@ import ast
 import pandas as pd
 
 def generate_nodes_df(entities_df: pd.DataFrame) -> pd.DataFrame:
-    metadata = {}
 
     nodes_df = pd.DataFrame(columns=['doc_id', 'entity', 'mention', 'mention_span','metadata'])
 
     for idx, row in entities_df.iterrows():
+        metadata = {}
         metadata['mention'] = row['mention']
-        metadata['mention_span'] = row['mention_span']
-        metadata['char_span'] = row['char_spans']
         metadata['mention_type'] = row['mention_type']
         metadata['entity'] = row['entity_names']
         metadata['entity_ID'] = row['entity_link']

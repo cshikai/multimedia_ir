@@ -5,5 +5,8 @@ neo4j:
   db: neo4j
 
 data:
-  relations_data_path: data/relations.csv
-  entites_data_path: data/entities.csv
+  relations_data_path: ../data/relations.csv
+  entities_data_path: ../data/nodes.csv
+
+graph:
+  relations_dict_path: ../data/relations_dict.json

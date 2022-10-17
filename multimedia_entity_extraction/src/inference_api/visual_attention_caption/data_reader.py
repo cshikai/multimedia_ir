@@ -65,7 +65,10 @@ class VALiveDataReader(DataReader):
                                 'image': image_data,
                                 'token_span': token_span,
                                 'bounding_box': bounding_box,
-                                'object_type': object_type}
+                                'object_type': object_type,
+                                # Needed to indicate whether to write to text or to img
+                                'linked_image': linked_image,
+                                'linked_text': linked_text}
 
 
 class UnknownVisualEntityExtractor:
@@ -106,6 +109,8 @@ class UnknownVisualEntityExtractor:
             N = len(object_bounding_boxes)
             for i in range(N):
                 object_class = object_classes[i]
+                if object_class == 'person':
+                    continue
                 bounding_box = object_bounding_boxes[i]
 
                 reshaped_bounding_boxes = [

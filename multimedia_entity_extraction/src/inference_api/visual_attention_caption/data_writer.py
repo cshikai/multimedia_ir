@@ -23,18 +23,22 @@ class VADataWriter(DataWriter):
                                     basic_auth=('elastic', 'changeme'),
                                     verify_certs=False
                                     )
-        self.HEATMAP_THRESHOLD = 0.4
+        self.HEATMAP_THRESHOLD = 0
 
     def write(self, **kwargs):
 
         max_heap = []
-        aggregated_heatmap_scores = self.box_aggregator.aggregate(**kwargs)
+        aggregated_heatmap_scores, heatmap_index = self.box_aggregator.aggregate(
+            **kwargs)
 
         text_entities_index = kwargs['text_entity_index']
         visual_entities_index = kwargs['image_entity_index']
         document_ids = kwargs['indexes']
         image_urls = kwargs['image_urls']
         object_types = kwargs['object_type']
+        linked_texts = kwargs['linked_text']
+        linked_images = kwargs['linked_image']
+
         visual_entities_ids = []
         N = len(aggregated_heatmap_scores)
         for i in range(N):
@@ -45,9 +49,13 @@ class VADataWriter(DataWriter):
         for i in range(N):
             heap_item = (
                 -aggregated_heatmap_scores[i],
+                heatmap_index[i],
                 visual_entities_ids[i],
                 text_entities_index[i],
                 document_ids[i],
+                linked_texts[i],
+                linked_images[i]
+
             )
             heappush(max_heap, heap_item)
 
@@ -59,27 +67,36 @@ class VADataWriter(DataWriter):
         text_entity_id_list = []
         visual_entity_id_list = []
         new_entity_id_list = []
+        merge_type_list = []
         ##############
         count = 0
         while max_heap:
-            score, visual_entity_id, text_entity_id, document_id = heappop(
+            score, hm_index, visual_entity_id, text_entity_id, document_id, linked_text, linked_image = heappop(
                 max_heap)
             # print(score, visual_entity_id, text_entity_id, document_id)
             if -score > self.HEATMAP_THRESHOLD:
-                print("Score", -score)
+                print("Index", hm_index, "; Score", -score)
                 count += 1
                 if visual_entity_id in visual_entities_set and text_entity_id in text_entities_set:
                     text_entities_set.remove(text_entity_id)
                     visual_entities_set.remove(visual_entity_id)
                     new_entity_id = '_'.join(
                         [str(document_id), str(text_entity_id), str(visual_entity_id)])
-                    # print("New Entity:{}; {}; {}; {}\n".format(
-                    # document_id, text_entity_id, visual_entity_id, new_entity_id))
+                    print("New Entity:{}; {}; {}; {}; {}{}\n".format(
+                        document_id, text_entity_id, visual_entity_id, new_entity_id, linked_text, linked_image))
                 ##########
                     document_id_list.append(document_id)
                     text_entity_id_list.append(text_entity_id)
                     visual_entity_id_list.append(visual_entity_id)
                     new_entity_id_list.append(new_entity_id)
+                    if linked_image and not linked_text:
+                        merge_type_list.append('image')
+                    elif not linked_image and linked_text:
+                        merge_type_list.append('text')
+                    elif not linked_image and not linked_text:
+                        merge_type_list.append("unk")
+                    else:  # Should never happen, but appending for completeness sake
+                        merge_type_list.append("")
                 ##########
                 # self.update_elastic(
                 #     document_id, text_entity_id, visual_entity_id, new_entity_id)
@@ -88,7 +105,8 @@ class VADataWriter(DataWriter):
         print("count:", count)
         print("text ent id", text_entity_id_list)
         print("viz ent id", visual_entity_id_list)
-        return text_entity_id_list, visual_entity_id_list
+        print("merge type", merge_type_list)
+        return merge_type_list, text_entity_id_list, visual_entity_id_list
 
     def update_elastic(self, document_id, text_entity_id, visual_entity_id, new_id):
         pass

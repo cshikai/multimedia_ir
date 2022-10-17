@@ -42,6 +42,8 @@ class VAProcessor(Processor):
             'bounding_box': kwargs['bounding_box'],
             'image_dimensions': kwargs['image'].size,
             'object_type': kwargs['object_type'],
+            'linked_image': kwargs['linked_image'],
+            'linked_text': kwargs['linked_text']
         }
 
     def collate_for_triton(self, **kwargs):
@@ -53,6 +55,8 @@ class VAProcessor(Processor):
                          kwargs['bounding_box'],
                          kwargs['image_dimensions'],
                          kwargs['object_type'],
+                         kwargs['linked_image'],
+                         kwargs['linked_text']
                          ))
 
         batch.sort(key=lambda x: x[2], reverse=True)
@@ -72,6 +76,8 @@ class VAProcessor(Processor):
         batch_bounding_box = [b[9] for b in batch]
         batch_image_dimensions = [b[10] for b in batch]
         batch_object_type = [b[11] for b in batch]
+        batch_linked_images = [b[12] for b in batch]
+        batch_linked_text = [b[13] for b in batch]
         triton_data = {
             'INPUT__0': batch_image,
             'INPUT__1': batch_text,
@@ -86,7 +92,10 @@ class VAProcessor(Processor):
             'token_span': batch_token_span,
             'bounding_box': batch_bounding_box,
             'image_dimensions': batch_image_dimensions,
-            'object_type': batch_object_type,
+            'object_type': batch_object_type,            
+            'linked_image': batch_linked_images,
+            'linked_text': batch_linked_text
+
         }
 
         return triton_data, metadata

@@ -1,10 +1,10 @@
-FROM neo4j:4.4
+FROM neo4j:4.4.0
 
-RUN apt-get update \
-    && apt-get upgrade -y \
-    && apt-get install -y \
-    && apt-get -y install make
+# RUN apt-get update \
+#     && apt-get upgrade -y \
+#     && apt-get install -y \
+#     && apt-get -y install make
 
-ADD build /build
-WORKDIR /build
-RUN make
+# ADD build /build
+# WORKDIR /build
+# RUN make

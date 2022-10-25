@@ -1,4 +1,5 @@
 # importing dependencies
+from attr import assoc
 import streamlit as st
 import numpy as np
 import os
@@ -11,10 +12,9 @@ from PIL import Image, ImageDraw, ImageFont
 from collections import Counter
 from collections import defaultdict
 from elasticsearch import Elasticsearch
+from neo4j import GraphDatabase
 
 import folium
-from folium import Marker
-from folium.plugins import MarkerCluster
 import datetime
 
 
@@ -26,6 +26,9 @@ es = Elasticsearch(ELASTIC_URL,
                    # ca_certs="",
                    basic_auth=(ELASTIC_USERNAME, ELASTIC_PASSWORD),
                    verify_certs=False)
+
+uri = "bolt://neo4j:7687/db/data"
+driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
 
 
 class Report:
@@ -50,12 +53,13 @@ class Report:
 
 
 class Entity:
-    def __init__(self, id, title="", body="", details={}, associated_entities=[], media=[], associated_reports=[]):
+    def __init__(self, id, title="", body="", details={}, associated_entities=[], associated_entities_neo4j={}, media=[], associated_reports=[]):
         self.id = id
         self.title = title
         self.body = body
         self.details = details
         self.associated_entities = associated_entities
+        self.associated_entities_neo4j = associated_entities_neo4j
         self.media = media
         self.associated_reports = associated_reports
 
@@ -235,6 +239,28 @@ def get_entity(id: int) -> Entity:
     details = {}
     details['Last Spotted'] = f"<a href = '?report={media[0]['ID']}' target = '_self'> {media[0]['timestamp']} </a>" if media else ""
 
+    def get_related_entities_neo4j(tx, entity_id) -> defaultdict:
+        related_entities = defaultdict(list)
+        result = tx.run(f"MATCH (x:Entity) WHERE x.entity_ID='{entity_id}'"
+                        "MATCH (y:Entity)"
+                        "MATCH (x)<-[r]->(y)"
+                        "RETURN x,r,y")
+        sorted_result = sorted(
+            result, key=lambda record: record[1]['timestamp'], reverse=True)
+        for record in sorted_result:
+            x, r, y = record
+            if y['entity_ID'] != "Unknown":
+                entity_href = f"<a href = '?entity={y['entity_ID']}' target = '_self'>{y['entity']}</a>"
+            else:
+                entity_href = y['mention']
+            href = f"•  {entity_href} (<a href = '?report={r['doc_id']}' target = '_self'>{r['timestamp']}</a>)"
+            related_entities[r.type].append(href)
+        return related_entities
+
+    with driver.session() as session:
+        related_entities_neo4j = session.read_transaction(
+            get_related_entities_neo4j, str(id))
+
     def extract_entities(reports: List[Report]) -> Tuple[Counter, defaultdict]:
         entities = Counter()
         for report in reports:
@@ -256,7 +282,7 @@ def get_entity(id: int) -> Entity:
     del associated_entities[id]  # remove self from associated entities
 
     result = Entity(id=res['hits']['hits'][0]['_id'],
-                    title=res['hits']['hits'][0]['_source']['title'], body=res['hits']['hits'][0]['_source']['content'], associated_reports=associated_reports, media=media, details=details, associated_entities=[(Entity(id=ID, title=get_entity_name(ID)), count) for (ID, count) in associated_entities.most_common(10)])
+                    title=res['hits']['hits'][0]['_source']['title'], body=res['hits']['hits'][0]['_source']['content'], associated_reports=associated_reports, media=media, details=details, associated_entities=[(Entity(id=ID, title=get_entity_name(ID)), count) for (ID, count) in associated_entities.most_common(10)], associated_entities_neo4j=related_entities_neo4j)
     return result
 
 
@@ -403,7 +429,14 @@ if __name__ == '__main__':
                 st.markdown(f"**Activities:**")
                 for activity in entity.details['Activities'] if 'Activities' in entity.details else '':
                     st.markdown(f"{activity}")
-                st.markdown(f"**Associated Entities**:")
+                st.markdown(f"**Associated Entities (Neo4j)**:")
+                for relation, associated_entities in entity.associated_entities_neo4j.items():
+                    st.markdown(f"<u>{relation}</u>",
+                                unsafe_allow_html=True)
+                    for associated_entity in associated_entities:
+                        st.markdown(associated_entity, unsafe_allow_html=True)
+                    st.markdown(f"<br>", unsafe_allow_html=True)
+                st.markdown(f"**Associated Entities (Co-occurance)**:")
                 for associated_entity in entity.associated_entities:
                     st.markdown(
                         f"<a href='?entity={associated_entity[0].id}' target='_self'>{associated_entity[0].title} ({associated_entity[1]})</a>", unsafe_allow_html=True)
@@ -418,7 +451,7 @@ if __name__ == '__main__':
                     st.image(
                         im)
                     st.markdown(
-                        f"<a href='?entity={image['ID']}' target='_self'>View Report</a>  ({image['timestamp']})", unsafe_allow_html=True)
+                        f"<a href='?report={image['ID']}' target='_self'>View Report</a>  ({image['timestamp']})", unsafe_allow_html=True)
 
         with col2:
             if entity:

@@ -103,7 +103,7 @@ def generate_hypertext(text_entities: List[Dict], body: str):
     sorted_entities = sorted(
         text_entities, key=lambda entity: len(entity['mention']), reverse=True)
     for entity in sorted_entities:
-        if entity["mention"] != " " and entity['entity_link'] != "-1":
+        if entity["mention"] != " " and entity['entity_link'].isdigit():
             # Workaround for closing brackets in entity mention
             mention = entity['mention'].replace(')', '\)')
             hypertext = re.sub(
@@ -116,7 +116,7 @@ def generate_hypertext_caption(text_caption_entity: Dict, body: str):
     sorted_entities = sorted(zip(
         text_caption_entity['mentions'], text_caption_entity['entity_links']), key=lambda item: len(item[0]), reverse=True)
     for entity in sorted_entities:
-        if entity[0] != " " and entity[1] != "-1":
+        if entity[0] != " " and entity[1].isdigit():
             hypertext = re.sub(
                 fr"\b{entity[0]}\b", f"<a href='?entity={entity[1]}' target='_self'>{entity[0]}</a>", hypertext)
     return hypertext
@@ -130,12 +130,14 @@ def get_image(server_path: str):
 
 
 @ st.experimental_memo(show_spinner=False)
-def get_entity_name(id: int) -> str:
+def get_entity_name(id: str) -> str:
     if id == "-1":
         return "Unknown"
-    else:
+    elif id.isdigit():
         res = es.search(index="wikipedia", query={"term": {"_id": id}})
-    return res['hits']['hits'][0]['_source']['title']
+        return res['hits']['hits'][0]['_source']['title']
+    else:
+        return "Grounded (unlinked)"
 
 
 @ st.experimental_memo(show_spinner=False)
@@ -265,15 +267,15 @@ def get_entity(id: int) -> Entity:
         entities = Counter()
         for report in reports:
             text_entities = [entity['entity_link']
-                             for entity in report.text_entities if entity['entity_link'] != "-1"]
+                             for entity in report.text_entities if entity['entity_link'].isdigit()]
             visual_person_entities = [entity['person_id']
                                       for entity in report.visual_entities]
             visual_entities = [
-                person_id for person_ids in visual_person_entities for person_id in person_ids if person_id != "-1"]
+                person_id for person_ids in visual_person_entities for person_id in person_ids if person_id.isdigit()]
             text_caption_nested_entities = [entity['entity_links']
                                             for entity in report.text_caption_entities]
             text_caption_entities = [
-                entity for nested_entities in text_caption_nested_entities for entity in nested_entities if entity != "-1"]
+                entity for nested_entities in text_caption_nested_entities for entity in nested_entities if entity.isdigit()]
             entities.update(
                 set(text_entities + visual_entities + text_caption_entities))
         return entities
@@ -337,12 +339,12 @@ if __name__ == '__main__':
                 geo_entities = defaultdict(list)
                 for report in reports:
                     text_entities = [entity['entity_link']
-                                     for entity in report.text_entities if entity['entity_link'] != "-1"]
+                                     for entity in report.text_entities if entity['entity_link'].isdigit()]
                     entities.update(text_entities)
                     visual_person_entities = [entity['person_id']
                                               for entity in report.visual_entities]
                     visual_entities = [
-                        person_id for person_ids in visual_person_entities for person_id in person_ids if person_id != "-1"]
+                        person_id for person_ids in visual_person_entities for person_id in person_ids if person_id.isdigit()]
                     entities.update(visual_entities)
                     for location in report.geo_data:
                         report_entities = {"ID": report.id, "timestamp": report.timestamp,
@@ -486,6 +488,7 @@ if __name__ == '__main__':
                         else:
                             # Generate face_id checkbox
                             for person_id in set(visual_entity['person_id']):
+                                print(person_id)
                                 st.checkbox(
                                     label=f"{get_entity_name(person_id)}", key=f"{server_path}_{person_id}", value=True)
                             # Generate obj_det checkbox

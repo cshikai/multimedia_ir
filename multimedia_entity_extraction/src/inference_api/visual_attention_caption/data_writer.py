@@ -28,7 +28,6 @@ class VADataWriter(DataWriter):
     def write(self, **kwargs):
 
         max_heap = []
-        print(kwargs)
         print(kwargs['image_urls'], kwargs['text_entity_index'])
         aggregated_heatmap_scores, heatmap_index = self.box_aggregator.aggregate(
             **kwargs)

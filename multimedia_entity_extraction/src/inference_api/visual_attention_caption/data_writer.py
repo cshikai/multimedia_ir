@@ -28,6 +28,8 @@ class VADataWriter(DataWriter):
     def write(self, **kwargs):
 
         max_heap = []
+        print(kwargs)
+        print(kwargs['image_urls'], kwargs['text_entity_index'])
         aggregated_heatmap_scores, heatmap_index = self.box_aggregator.aggregate(
             **kwargs)
 
@@ -59,9 +61,9 @@ class VADataWriter(DataWriter):
             )
             heappush(max_heap, heap_item)
 
-        print("HEAP LENGTH", len(max_heap))
-        print("vis set", visual_entities_set)
-        print("text set", text_entities_set)
+        # print("HEAP LENGTH", len(max_heap))
+        # print("vis set", visual_entities_set)
+        # print("text set", text_entities_set)
         ##############
         document_id_list = []
         text_entity_id_list = []
@@ -75,15 +77,15 @@ class VADataWriter(DataWriter):
                 max_heap)
             # print(score, visual_entity_id, text_entity_id, document_id)
             if -score > self.HEATMAP_THRESHOLD:
-                print("Index", hm_index, "; Score", -score)
+                # print("Index", hm_index, "; Score", -score)
                 count += 1
                 if visual_entity_id in visual_entities_set and text_entity_id in text_entities_set:
                     text_entities_set.remove(text_entity_id)
                     visual_entities_set.remove(visual_entity_id)
                     new_entity_id = '_'.join(
                         [str(document_id), str(text_entity_id), str(visual_entity_id)])
-                    print("New Entity:{}; {}; {}; {}; {}{}\n".format(
-                        document_id, text_entity_id, visual_entity_id, new_entity_id, linked_text, linked_image))
+                    # print("New Entity:{}; {}; {}; {}; {}{}\n".format(
+                    #     document_id, text_entity_id, visual_entity_id, new_entity_id, linked_text, linked_image))
                 ##########
                     document_id_list.append(document_id)
                     text_entity_id_list.append(text_entity_id)
@@ -102,10 +104,10 @@ class VADataWriter(DataWriter):
                 #     document_id, text_entity_id, visual_entity_id, new_entity_id)
             else:
                 break
-        print("count:", count)
-        print("text ent id", text_entity_id_list)
-        print("viz ent id", visual_entity_id_list)
-        print("merge type", merge_type_list)
+        # print("count:", count)
+        # print("text ent id", text_entity_id_list)
+        # print("viz ent id", visual_entity_id_list)
+        # print("merge type", merge_type_list)
         return merge_type_list, text_entity_id_list, visual_entity_id_list
 
     def update_elastic(self, document_id, text_entity_id, visual_entity_id, new_id):

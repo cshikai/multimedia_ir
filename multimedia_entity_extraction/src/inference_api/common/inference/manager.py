@@ -59,7 +59,8 @@ class InferenceManager(ABC):
         if self.output:
             merge_type_list, text_entity_id_list, visual_entity_id_list = self.writer.write(
                 **self.output)
-
+        else:
+            merge_type_list, text_entity_id_list, visual_entity_id_list = [], [], []
         return merge_type_list, text_entity_id_list, visual_entity_id_list
 
     def _infer_single_batch(self, batch_data):

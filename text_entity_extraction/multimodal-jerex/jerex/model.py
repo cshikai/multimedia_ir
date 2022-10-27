@@ -253,6 +253,8 @@ class JEREXModel(pl.LightningModule):
                 original_sentences_tokens.extend(sentence['tokens'])
                 original_tokenized_sentences.append(sentence['tokens'])
 
+            print("original_tokenized_sentences", original_tokenized_sentences)
+
             sentence_count = 0
             cum_len = 0
             rolling_length = []
@@ -275,7 +277,9 @@ class JEREXModel(pl.LightningModule):
 
                 for mention in mention_spans:
                     span_start = mention[0]
-
+                    sent_indexes = [rolling_length.index(
+                        length) for length in rolling_length if span_start < length]
+                    print(sent_indexes)
                     sent_idx = [rolling_length.index(
                         length) for length in rolling_length if span_start < length][0]
                     sent = sentences[sent_idx]

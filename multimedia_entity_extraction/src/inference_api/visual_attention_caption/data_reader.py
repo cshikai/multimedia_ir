@@ -3,10 +3,13 @@
 import requests
 import numpy as np
 from spacy.lang.en import English
+from allennlp.data.tokenizers import WhitespaceTokenizer
+import tokenizations
 import os
 import io
 from PIL import Image
 import base64
+import re
 
 import pandas as pd
 from sqlalchemy import Table, MetaData, create_engine
@@ -34,7 +37,7 @@ class VALiveDataReader(DataReader):
             result = self.client.get(index='documents_m2e2',
                                      id=document_id,
                                      )
-
+            print("DOC_ID", document_id)
             visual_entities = sorted(
                 result['_source']['visual_entities'], key=lambda x: x['file_name'].split('/')[-1])
             text_caption_entities = sorted(
@@ -49,13 +52,13 @@ class VALiveDataReader(DataReader):
                 #     caption, text_ent)
                 # For each visual entity
                 for image_url, image_entity_index, image_data, bounding_box, object_type, linked_image in (image_generator):
-                    print("IMAGE:", object_type)
+                    # print("IMAGE:", object_type)
                     text_generator = self.text_entity_extractor.get_generator(
                         caption, text_ent)
                     for text, text_entity_index, token_span, linked_text in text_generator:  # For each textual entity
-                        print("TEXT:", token_span)
+                        # print("TEXT:", token_span)
                         if not (linked_image and linked_text):
-                            print(image_url)
+                            # print(image_url)
                             yield {
                                 'index': document_id,
                                 'image_url': image_url,
@@ -148,6 +151,9 @@ class UnknownTextEntityExtractor:
             sentence_index, span_start, span_end = text_entities['mention_spans'][i]
             sentence = sentences[sentence_index]
             # print("SENTENCE:", sentence, span_start, span_end)
+            print(sentences)
+            print("MENTION", text_entities['mentions'][i],
+                  "Truncated:", sentence[span_start:span_end])
             token_span = self.token_mapper.get_tokens(
                 sentence, text_entities['mentions'][i], span_start, span_end)
             yield sentences[sentence_index], i, token_span, linked_text
@@ -157,7 +163,8 @@ class TextTokenMapper:
 
     def __init__(self):
         self.sentencizer = English()
-        self.sentencizer.add_pipe('sentencizer')
+        self.sentencizer.add_pipe(self.sentencizer.create_pipe('sentencizer'))
+        self.elmo_tokenizer = WhitespaceTokenizer()
 
     def split_sentences(self, text):
         paras = text.split("\n")
@@ -166,7 +173,7 @@ class TextTokenMapper:
             str_sents = list(self.sentencizer(para).sents)
             for sent in str_sents:
                 tokens = list(self.sentencizer.tokenizer(sent.text))
-                tokens = [token.text for token in tokens]
+                tokens = [token.text_with_ws for token in tokens]
                 if len(tokens) > 0:
                     sentences.append(sent.text)
         return sentences
@@ -176,17 +183,31 @@ class TextTokenMapper:
         # tokens = re.split('\W+', sentence)
         # print(sentence[span_start:span_end])
         # print(sentence)
-        tokens = sentence.split(" ")
+        # tokens = re.split(' |/|-', sentence)
+        # print("Split", tokens)
+        elmo_tokens = self.elmo_tokenizer.tokenize(sentence)
+        elmo_tokens_text = [token.text for token in elmo_tokens]
+        spacy_tokens = self.sentencizer.tokenizer(sentence)
+        spacy_tokens_text = [token.text for token in spacy_tokens]
+
+        _, s2e = tokenizations.get_alignments(
+            elmo_tokens_text, spacy_tokens_text)
+        # tokens = [tokens.orth_ for token in self.sentencizer.tokenizer(sentence)]
         # print(tokens)
         char_map = {}
         char_index = 0
-        for index, token in enumerate(tokens):
-            char_map[char_index] = index
-            char_index += len(token)+1
-        # print(char_map)
+        for index, token in enumerate(spacy_tokens):
+            char_map[token.idx] = s2e[index][0]
+            # if token.is_punct:
+            #     char_index += len(token)
+            # else:
+            #     char_index += len(token)+1
+        # print(sentence)
+        # print(tokens)
         start_token = char_map[span_start]
 
-        end_token = len(tokens)  # If entity is last token in the sentence
+        # If entity is last token in the sentence
+        end_token = len(spacy_tokens)
         for i in char_map:
             if i < span_end:
                 continue

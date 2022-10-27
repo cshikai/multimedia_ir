@@ -33,6 +33,8 @@ class BoxHeatmapAggregator:
         for i in range(batch_size):
             scaled_bounding_box = self._scale_bounding_box(
                 image_dims[i], batch_bounding_box[i])
+            print(kwargs['image_urls'][i],
+                  kwargs['text_entity_index'][i], token_spans[i])
             activations[i], chosen_layer[i] = self._aggregate(
                 word_image_heatmaps[i], scaled_bounding_box, token_spans[i])
 
@@ -48,17 +50,17 @@ class BoxHeatmapAggregator:
         right_bound = bounding_box[1][0]
 
         # (h,w,t,l)
+        print(token_span[0], token_span[1]+1)
+        print(word_image_heatmap.shape)
         heatmap_window = word_image_heatmap[top_bound:bottom_bound+1,
                                             left_bound: right_bound+1, token_span[0]: token_span[1]+1, :]
 
         ### TAKE 3 LAYERS ONLY ###
-
         permutated_hm = heatmap_window.permute(
             3, 2, 0, 1)  # h, w, t, l to l, t, h, w
         permutated_hm = permutated_hm[1:]
         heatmap_window = permutated_hm.permute(
             2, 3, 1, 0)  # l, t, h, w to h, w, t, l
-
         ### /TAKE 3 LAYERS ONLY ###
 
         # Reshape flattens h,w,t to a single dimension. (i.e. 2x2x4x4 -> 16x4)
@@ -66,8 +68,10 @@ class BoxHeatmapAggregator:
         if self.MODE == 'MAX':
             # print(heatmap_window.shape)
             # print(heatmap_window.reshape(-1,heatmap_window.shape[3]).shape)
+            print("Pre:", heatmap_window.shape)
             heatmap = torch.max(
                 heatmap_window.reshape(-1, heatmap_window.shape[3]), dim=0)[0]
+            print("Post", heatmap.shape)
 
         elif self.MODE == 'MEAN':
             heatmap = torch.mean(

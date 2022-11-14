@@ -3,8 +3,8 @@ import os
 from copy import deepcopy
 from tqdm import tqdm
 
-from inference_api.visual_attention_caption.manager import VAManager
-from inference_api.visual_attention_caption.log_manager import VALogDatabaseManager
+# from inference_api.visual_attention_caption.manager import VAManager
+# from inference_api.visual_attention_caption.log_manager import VALogDatabaseManager
 
 from elasticsearch import Elasticsearch
 
@@ -14,8 +14,8 @@ client = Elasticsearch(ELASTIC_URL,
                        verify_certs=False
                        )
 
-log_manager = VALogDatabaseManager('visual_attention_caption')
-va_manager = VAManager(log_manager)
+# log_manager = VALogDatabaseManager('visual_attention_caption')
+# va_manager = VAManager(log_manager)
 
 
 def resolve_entity_name(entity_link):
@@ -32,7 +32,7 @@ def rollback(ledger_obj):
                                doc={"text_caption_entities": ledger_obj.ledger[article]['text_caption_entities'],
                                     "visual_entities": ledger_obj.ledger[article]['visual_entities']}
                                )
-    ledger_obj.clear_ledger()
+    # ledger_obj.clear_ledger()
 
 
 def ingest(all_articles, ledger_obj):
@@ -145,5 +145,5 @@ if __name__ == "__main__":
     all_articles = client.search(index='documents_m2e2',
                                  body={'size': 1000}
                                  )
-    ingest(all_articles, ledger_obj)
-    # rollback(ledger_obj)
+    # ingest(all_articles, ledger_obj)
+    rollback(ledger_obj)

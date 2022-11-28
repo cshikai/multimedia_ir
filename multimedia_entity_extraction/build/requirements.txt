@@ -19,5 +19,6 @@ tritonclient[all]==2.24.0
 cached-path==1.1.2
 allennlp==2.9.3
 elasticsearch==8.4.0
+pytokenizations==0.8.4
 #notebook dev
 

@@ -95,7 +95,7 @@ class UnknownVisualEntityExtractor:
 
             for i in range(N):
                 entity_id = entity_ids[i]
-                if entity_id == "-1":
+                if entity_id == "-1" or entity_id[:4] == 'unk_':
                     linked_image = False
                 else:
                     linked_image = True
@@ -143,7 +143,7 @@ class UnknownTextEntityExtractor:
 
         for i in range(N):
             entity = text_entities[i]
-            if entity['entity_link'] == "-1":
+            if entity['entity_link'] == "-1" or entity['entity_link'][:4] == "unk_":
                 linked_text = False
             else:
                 linked_text = True

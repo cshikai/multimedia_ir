@@ -1,4 +1,6 @@
+from math import exp
 from sys import exc_info
+from PIL.Image import Image
 import requests
 import json
 from typing import List, Dict
@@ -129,11 +131,13 @@ if __name__ == '__main__':
 
     print(exploded_df.info())
     print(exploded_df.head())
+    exploded_df = exploded_df[:5]
+    # exploded_df.to_csv('data/exploded_images.csv', index=False)
 
-    # df_json = exploded_df.to_json(orient="records")
-    # df_json = json.loads(df_json)
-    # jerex_results = predict_jerex(df_json)
-    # print("jerex results: ", jerex_results)
+    df_json = exploded_df.to_json(orient="records")
+    df_json = json.loads(df_json)
+    jerex_results = predict_jerex(df_json)
+    print("jerex results: ", jerex_results)
 
     # jerex_results = pd.read_csv('data/test_jerex.csv')
     # jerex_results = jerex_results[:10]
@@ -308,6 +312,7 @@ if __name__ == '__main__':
     for idx, row in captions_df.iterrows():
         images_ids = row['images']
         entities = row['identified_entities']
+        images_with_captions = []
 
         new_entities = []
         for entity in entities:
@@ -319,8 +324,22 @@ if __name__ == '__main__':
             print(real_filename)
             entity.update({"file_name": real_filename})
             new_entities.append(entity)
+            images_with_captions.append(real_filename)
+
+        print("images with captions: ", images_with_captions)
+
+        for image in images_ids:
+            if image not in images_with_captions:
+                blank_dict = {'file_name': image,
+                              'mentions': [],
+                              'mention_types': [],
+                              'mention_spans': [],
+                              'entity_links': [],
+                              'entity_names': []}
+                new_entities.append(blank_dict)
+
         results_df.loc[-1] = [row['ID'], row['elasticsearch_ID'], row['title'],
-                              row['image_captions'], row['images'], entities]  # adding a row
+                              row['image_captions'], row['images'], new_entities]  # adding a row
         results_df.index = results_df.index + 1  # shifting index
         results_df = results_df.sort_index()  # sorting by index
 

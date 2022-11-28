@@ -6,6 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from neo4j import GraphDatabase
+from haystack.document_stores import ElasticsearchDocumentStore
 
 
 class Neo4jConnection:
@@ -98,7 +99,7 @@ def _generate_edges(entities_triples_df, relations_dict, db=None):
         relation_type = triple.relation.replace(" ", "_")
         relation_type = re.sub('[^A-Za-z0-9]+', '_', relation_type)
         edge_attributes = {"relation_id": str(
-            relations_dict[triple.relation]), "doc_id": str(triple.doc_id)}
+            relations_dict[triple.relation]), "doc_id": str(triple.doc_id), "timestamp": str(triple.timestamp)}
         merge_edge(source_node_label, source_node_attributes, target_node_label,
                    target_node_attributes, relation_type, edge_attributes, db)
 
@@ -106,7 +107,7 @@ def _generate_edges(entities_triples_df, relations_dict, db=None):
 if __name__ == '__main__':
 
     with open("config.yaml", "r") as f:
-        config = yaml.load(f)
+        config = yaml.load(f, Loader=yaml.FullLoader)
 
     conn = Neo4jConnection(uri=config['neo4j']['uri'],
                            user=config['neo4j']['user'],
@@ -121,6 +122,33 @@ if __name__ == '__main__':
     relations_dict_file = open(config['graph']['relations_dict_path'])
     relations_dict = json.load(relations_dict_file)
     relations_dataframe = pd.read_csv(config['data']['relations_data_path'])
+    print(relations_dataframe.info())
     relations_dataframe.drop_duplicates(inplace=True)
-    print(relations_dataframe.head(20))
-    _generate_edges(relations_dataframe, relations_dict)
+    print(relations_dataframe.info())
+
+    document_store = ElasticsearchDocumentStore(host="elasticsearch",
+                                                port="9200",
+                                                username="elastic",
+                                                password="changeme",
+                                                scheme="https",
+                                                verify_certs=False,
+                                                index='documents_m2e2',
+                                                search_fields=['content', 'title'])
+
+    documents = document_store.get_all_documents()
+
+    articles_df = pd.DataFrame(
+        columns=['doc_id', 'timestamp', 'elasticsearch_ID'])
+
+    for document in documents:
+        articles_df.loc[-1] = [document.meta['ID'],
+                               document.meta['timestamp'], document.id]  # adding a row
+        articles_df.index = articles_df.index + 1  # shifting index
+        articles_df = articles_df.sort_index()
+
+    print(articles_df.head())
+
+    merged_df = pd.merge(
+        relations_dataframe, articles_df, on=['doc_id'])
+    print(merged_df.info())
+    _generate_edges(merged_df, relations_dict)

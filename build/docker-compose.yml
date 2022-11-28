@@ -335,7 +335,7 @@ services:
       - ../multimedia_entity_extraction/data:/data
       - ../multimedia_entity_extraction/models:/models
     ports:
-      - 8888:8888
+      - 8889:8888
     ulimits:
       memlock: -1 # set upper limit for how much memory is locked for the container (-1 means lock as much as the container uses)
     shm_size: 32gb

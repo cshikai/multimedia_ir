@@ -1,0 +1,10 @@
+DATA:
+  ARTICLES: '../data/m2e2.csv'
+  IMAGES: '../data/images_m2e2'
+  TITLES: '../data/titles.json'
+
+ELASTICSEARCH:
+  URL: 'https://elasticsearch:9200'
+  INDEX_NAME: 'documents_m2e2'
+  ELASTIC_USERNAME: elastic
+  ELASTIC_PASSWORD: changeme

@@ -153,7 +153,7 @@ if __name__ == '__main__':
     #     else:
     #         entities = row['entities']
 
-    #     for entity_row in entities:
+    #     for entity_row in entities: 
     #         count += len(entity_row)
 
     # print("total number of entities: ", count)

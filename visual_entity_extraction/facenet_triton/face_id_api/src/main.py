@@ -1,6 +1,9 @@
-from embeddings.embeddings import EmbeddingDataset
-from embeddings.uploader import Uploader
+# from embeddings.embeddings import EmbeddingDataset
+# from embeddings.uploader import Uploader
 # from embeddings.identify import Identify
+
+from weaviate.embeddings import Generator, Uploader, Identify
+
 
 import yaml
 from PIL import Image
@@ -19,8 +22,11 @@ config = read_yaml()
 EMBEDDING_PATH = config['EMB']['emb_path']
 
 
-dataset = EmbeddingDataset(EMBEDDING_PATH, local=False)
-uploader = Uploader(EMBEDDING_PATH, local=False)
+# dataset = EmbeddingDataset(EMBEDDING_PATH, local=False)
+# uploader = Uploader(EMBEDDING_PATH, local=False)
+
+dataset = Generator()
+uploader = Uploader(config['WEAVIATE']['URL'], config['WEAVIATE']['CLASS'])
 
 
 class Image(BaseModel):

@@ -1,10 +1,11 @@
 # To ensure app dependencies are ported from your virtual environment/host machine into your container, run 'pip freeze > requirements.txt' in the terminal to overwrite this file
 uvicorn==0.17.6
-numpy==1.22.3
+numpy==1.23.5
 fastapi==0.77.1
 Pillow==9.2.0
-requests==2.27.1
+requests==2.28.1
 elasticsearch==8.3.3
+weaviate-client==3.9.0
 # Triton stuffs
 tritonclient==2.21.0
 gevent==21.12.0

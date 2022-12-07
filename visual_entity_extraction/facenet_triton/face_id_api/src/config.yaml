@@ -15,3 +15,7 @@ ELASTICSEARCH:
   INDEX_NAME: 'wikipedia'
   ELASTIC_USERNAME: elastic
   ELASTIC_PASSWORD: changeme
+
+WEAVIATE:
+  URL: 'http://weaviate:8081'
+  CLASS: 'Faces'

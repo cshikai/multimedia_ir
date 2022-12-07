@@ -325,6 +325,21 @@ services:
       ELASTICSEARCH_HOST_PORT: https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
     ports:
       - 8501:8501
+  weaviate:
+    image: semitechnologies/weaviate:1.14.0
+    ports:
+      - 8081:8080
+      - 2112:2112
+    restart: on-failure:0
+    volumes:
+      - ../var/weaviate:/var/lib/weaviate
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      CLUSTER_HOSTNAME: 'node1'
+      PROMETHEUS_MONITORING_ENABLED: 'true'
   multimedia_entity_extraction:
     # runtime: nvidia
     build: ../multimedia_entity_extraction

@@ -32,11 +32,10 @@ driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
 
 
 class Report:
-    def __init__(self, id, title="", body="", date="", text_entities=[], text_caption_entities=[], images={}, image_captions=[], visual_entities=[], geo_data=[], timestamp=""):
+    def __init__(self, id, title="", body="", text_entities=[], text_caption_entities=[], images={}, image_captions=[], visual_entities=[], geo_data=[], timestamp=""):
         self.id = id
         self.title = title
         self.body = body
-        self.date = date
         self.text_entities = text_entities
         self.text_caption_entities = text_caption_entities
         self.images = images
@@ -154,14 +153,14 @@ def search_reports(query: str, start_date=None, end_date=None) -> List[Report]:
         res = es.search(index="documents_m2e2", query={
                         "match_all": {}}, size=10000)
     else:
-        res = es.search(index="documents_m2e2", query=es_query, size=20)
+        res = es.search(index="documents_m2e2", query=es_query, size=50)
     results = []
     for doc in res['hits']['hits']:
         id = doc['_source']['ID']
-        title = doc['_id']
+        title = doc['_source']['title']
         body = doc['_source']['content']
         geo_data = doc['_source']['geo_data'] if 'geo_data' in doc['_source'] else []
-        timestamp = doc['_source']['timestamp']
+        timestamp = doc['_source']['timestamp'][:10]
         text_entities = doc['_source']['text_entities'] if 'text_entities' in doc['_source'] else [
         ]
         visual_entities = doc['_source']['visual_entities'] if doc['_source']['images'] else [
@@ -198,12 +197,13 @@ def get_report(id: int) -> Report:
     visual_entities = res['hits']['hits'][0]['_source']['visual_entities'] if images else [
     ]
     result = Report(id=res['hits']['hits'][0]['_source']['ID'],
-                    title=res['hits']['hits'][0]['_id'], body=hypertext, images=images, visual_entities=visual_entities, image_captions=image_captions)
+                    title=res['hits']['hits'][0]['_source']['title'], body=hypertext, images=images, visual_entities=visual_entities, image_captions=image_captions)
     return result
 
 
 def search_entities(query: str) -> List[Entity]:
-    res = es.search(index="wikipedia", query={"match": {"title": query}})
+    res = es.search(index="wikipedia", query={
+                    "match": {"title": query}}, size=5)
     results = []
     for doc in res['hits']['hits']:
         id = doc['_id']
@@ -228,7 +228,7 @@ def get_entity(id: int) -> Entity:
         text_caption_entities = report['_source']['text_caption_entities'] if report['_source']['images'] else [
         ]
         associated_reports.append(
-            Report(id=report['_source']['ID'], title=report['_id'], timestamp=report['_source']['timestamp'], text_entities=text_entities, visual_entities=visual_entities, text_caption_entities=text_caption_entities))
+            Report(id=report['_source']['ID'], title=report['_source']['title'], timestamp=report['_source']['timestamp'][:10], text_entities=text_entities, visual_entities=visual_entities, text_caption_entities=text_caption_entities))
     associated_reports_sorted = sorted(
         associated_reports, key=lambda report: report.timestamp, reverse=True)
     media = []
@@ -255,8 +255,11 @@ def get_entity(id: int) -> Entity:
                 entity_href = f"<a href = '?entity={y['entity_ID']}' target = '_self'>{y['entity']}</a>"
             else:
                 entity_href = y['mention']
-            href = f"•  {entity_href} (<a href = '?report={r['doc_id']}' target = '_self'>{r['timestamp']}</a>)"
-            related_entities[r.type].append(href)
+            related_entities[r.type].append(entity_href)
+            # href = f"•  {entity_href} (<a href = '?report={r['doc_id']}' target = '_self'>{r['timestamp']}</a>)"
+            # related_entities[r.type].append(href)
+        for k, v in related_entities.items():
+            related_entities[k] = Counter(v).most_common(1)
         return related_entities
 
     with driver.session() as session:
@@ -284,7 +287,7 @@ def get_entity(id: int) -> Entity:
     del associated_entities[id]  # remove self from associated entities
 
     result = Entity(id=res['hits']['hits'][0]['_id'],
-                    title=res['hits']['hits'][0]['_source']['title'], body=res['hits']['hits'][0]['_source']['content'], associated_reports=associated_reports, media=media, details=details, associated_entities=[(Entity(id=ID, title=get_entity_name(ID)), count) for (ID, count) in associated_entities.most_common(10)], associated_entities_neo4j=related_entities_neo4j)
+                    title=res['hits']['hits'][0]['_source']['title'], body=res['hits']['hits'][0]['_source']['content'], associated_reports=associated_reports_sorted, media=media, details=details, associated_entities=[(Entity(id=ID, title=get_entity_name(ID)), count) for (ID, count) in associated_entities.most_common(5)], associated_entities_neo4j=related_entities_neo4j)
     return result
 
 
@@ -292,7 +295,7 @@ if __name__ == '__main__':
 
     # Search Bar
     inp = st.text_input(label='Search', key='searchbar',
-                        value=st.session_state['search'], placeholder='Donald Trump')
+                        value=st.session_state['search'], placeholder='Barack Obama')
     reports = None
 
     if inp != "":
@@ -321,17 +324,17 @@ if __name__ == '__main__':
                     st.header("Reports")
                     st.success(f"We found {len(reports)} matches")
                     for doc in reports:
-                        st.subheader(
-                            f"<a href='?report={doc.id}' target='_self'>{doc.title}</a>", anchor="")
-                        st.write(escape_latex(doc.body))
+                        st.markdown(
+                            f"### <a href='?report={doc.id}' target='_self'>{doc.title}</a>", unsafe_allow_html=True)
+                        st.write(
+                            f"{doc.timestamp} — {(escape_latex(doc.body)[:1500] + '..') if len(doc.body) > 1500 else escape_latex(doc.body)}")
 
             with col2:
                 if entities:
-                    st.header("Entity Results")
-                    st.success(f"We found {len(entities)} matches")
+                    st.header("Targets")
                     for entity in entities:
-                        st.subheader(
-                            f"<a href='?entity={entity.id}' target='_self'>{entity.title}</a>", anchor="")
+                        st.markdown(
+                            f"### <a href='?entity={entity.id}' target='_self'>{entity.title}</a>", unsafe_allow_html=True)
 
         with maps_tab:
             def extract_entities(reports: List[Report]) -> Tuple[Counter, defaultdict]:
@@ -420,48 +423,54 @@ if __name__ == '__main__':
 
         with col1:
             if entity:
-                st.header(f"**Entity: {entity.title}**")
+                st.header(f"**Target: {entity.title}**")
                 st.write(
                     f"<div style='text-align: justify;'>{entity.body}</div>", unsafe_allow_html=True)
                 st.markdown("""---""")
-                st.markdown(
-                    f"**Last Spotted**: {entity.details['Last Spotted'] if 'Last Spotted' in entity.details else ''}", unsafe_allow_html=True)
-                st.markdown(
-                    f"**Location**: {entity.details['Location'] if 'Location' in entity.details else ''}")
-                st.markdown(f"**Activities:**")
-                for activity in entity.details['Activities'] if 'Activities' in entity.details else '':
-                    st.markdown(f"{activity}")
-                st.markdown(f"**Associated Entities (Neo4j)**:")
-                for relation, associated_entities in entity.associated_entities_neo4j.items():
-                    st.markdown(f"<u>{relation}</u>",
-                                unsafe_allow_html=True)
-                    for associated_entity in associated_entities:
-                        st.markdown(associated_entity, unsafe_allow_html=True)
-                    st.markdown(f"<br>", unsafe_allow_html=True)
                 st.markdown(f"**Associated Entities (Co-occurance)**:")
                 for associated_entity in entity.associated_entities:
                     st.markdown(
                         f"<a href='?entity={associated_entity[0].id}' target='_self'>{associated_entity[0].title} ({associated_entity[1]})</a>", unsafe_allow_html=True)
-                st.markdown(f"**Media**:")
 
+                with st.expander("See Associated Relations"):
+                    for relation, associated_entities in entity.associated_entities_neo4j.items():
+                        st.markdown(f"<u>{relation}</u>: {associated_entities[0][0]}",
+                                    unsafe_allow_html=True)
+                        # for associated_entity in associated_entities:
+                        #     st.markdown(associated_entity,
+                        #                 unsafe_allow_html=True)
+                        # st.markdown(f"<br>", unsafe_allow_html=True)
+                st.markdown(
+                    f"**Last Spotted**: {entity.details['Last Spotted'] if 'Last Spotted' in entity.details else ''}", unsafe_allow_html=True)
+                # st.markdown(
+                #     f"**Location**: {entity.details['Location'] if 'Location' in entity.details else ''}")
+                # st.markdown(f"**Activities:**")
+                # for activity in entity.details['Activities'] if 'Activities' in entity.details else '':
+                #     st.markdown(f"{activity}")
+                st.markdown(f"**Media**:")
+                image_array = []
+                caption = []
                 # For future development: https://github.com/vivien000/st-clickable-images
                 for image in entity.media:
                     img_bytes = base64.b64decode(
                         image['image'].encode('utf-8'))
                     im = Image.open(io.BytesIO(img_bytes)).convert('RGB')
                     im.thumbnail((256, 256))
-                    st.image(
-                        im)
-                    st.markdown(
-                        f"<a href='?report={image['ID']}' target='_self'>View Report</a>  ({image['timestamp']})", unsafe_allow_html=True)
+                    image_array.append(im)
+                    # caption.append(
+                    #     f"<a href='?report={image['ID']}' target='_self'>View Report</a>  ({image['timestamp']})")
+                    caption.append(
+                        f"{image['timestamp']}")
+                st.image(
+                    image_array, caption=caption)
 
         with col2:
             if entity:
                 st.header("Reports")
                 for report in entity.associated_reports:
-                    st.subheader(
-                        f"<a href='?report={report.id}' target='_self'>{report.title}</a>", anchor="")
-                    st.write(report.date)
+                    st.markdown(
+                        f"### <a href='?report={report.id}' target='_self'>{report.title}</a>", unsafe_allow_html=True)
+                    st.write(report.timestamp)
 
     elif st.session_state['report']:
         col1, col2 = st.columns([8, 2])
@@ -472,8 +481,7 @@ if __name__ == '__main__':
 
         with col1:
             if report:
-                st.header(f"**Report: {report.title}**")
-                # NOTE: Unsafe
+                st.header(f"Report: {report.title}")
                 st.write(
                     f"<div style='text-align: justify;'>{report.body}</div>", unsafe_allow_html=True)
                 st.markdown("""---""")

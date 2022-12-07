@@ -259,10 +259,10 @@ if __name__ == '__main__':
     results_df.to_csv("data/jerex_plus_blink.csv", index=False)
 
     # Update results to ElasicSearch
-    for idx, row in results_df.iterrows():
-        meta_dict = {'entities_identified': row['identified_entities']}
-        document_store.update_document_meta(
-            id=row['elasticsearch_ID'], meta=meta_dict)
+    # for idx, row in results_df.iterrows():
+    #     meta_dict = {'entities_identified': row['identified_entities']}
+    #     document_store.update_document_meta(
+    #         id=row['elasticsearch_ID'], meta=meta_dict)
 
     end = time.time()
     print("Time to complete jerex and entity linking", end - start)

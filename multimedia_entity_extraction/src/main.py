@@ -3,8 +3,8 @@ import os
 from copy import deepcopy
 from tqdm import tqdm
 
-# from inference_api.visual_attention_caption.manager import VAManager
-# from inference_api.visual_attention_caption.log_manager import VALogDatabaseManager
+from inference_api.visual_attention_caption.manager import VAManager
+from inference_api.visual_attention_caption.log_manager import VALogDatabaseManager
 
 from elasticsearch import Elasticsearch
 
@@ -14,8 +14,8 @@ client = Elasticsearch(ELASTIC_URL,
                        verify_certs=False
                        )
 
-# log_manager = VALogDatabaseManager('visual_attention_caption')
-# va_manager = VAManager(log_manager)
+log_manager = VALogDatabaseManager('visual_attention_caption')
+va_manager = VAManager(log_manager)
 
 
 def resolve_entity_name(entity_link):

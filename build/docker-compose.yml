@@ -187,6 +187,7 @@ services:
       - elasticsearch-data:/usr/share/elasticsearch/data
       - ../elastdocker/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
       - ../elastdocker/elasticsearch/config/log4j2.properties:/usr/share/elasticsearch/config/log4j2.properties
+      - ../elastdocker/backup:/backup
     secrets:
       - source: elasticsearch.keystore
         target: /usr/share/elasticsearch/config/elasticsearch.keystore
